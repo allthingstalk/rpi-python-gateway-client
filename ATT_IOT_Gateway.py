@@ -305,7 +305,7 @@ def _buildPayLoad(value):
         timestamp = calendar.timegm(time.gmtime())                                # we need the current epoch time so we can provide the correct time stamp.
         return str(timestamp) + "|" + str(value)                                            # build the string that contains the data that we want to send
     else:
-        data = {  "value": value, "at": datetime.utcnow().isoformat() }
+        data = {  "value": value, "at": datetime.utcnow().isoformat() + 'Z' }       # the +Z is a small hack cause utcnow doesn't include timezone info. Since we want utc time, we can add the value 'z' to indicate this.
         return json.dumps(data)
 
 
