@@ -25,8 +25,8 @@ There are 2 flavours of the IOT library. Use a library according to your needs.
 -->
 
 ### Installation
-- Run `git clone https://github.com/allthingstalk/raspberrypi-python-client`
-- Run `sudo bash raspberrypi-python-client/setupNoShield.sh`
+- Run `git clone https://github.com/allthingstalk/rpi-python-gateway-client`
+- Run `sudo bash rpi-python-gateway-client/setupNoShield.sh`
 
 ### Instructions
 
@@ -34,8 +34,3 @@ There are 2 flavours of the IOT library. Use a library according to your needs.
   2. Open the 'xbee_gateway_demo.py' template script: `sudo nano xbee_gateway_demo.py`
   3. fill in the missing strings: replace deviceId, clientId, clientKey. Optionally change/add the sensor & actuator names, pins, descriptions, types. 
   4. Run the script: `python xbee_gateway_demo.py`
-
-
-### Extra info
-Check out [dexter industries (makers of the GrovePi)](http://www.dexterindustries.com/GrovePi/) excellent [tutorial for the RPI B+](http://www.dexterindustries.com/GrovePi/get-started-with-the-grovepi/raspberry-pi-model-b-grovepi/) on how to install the hardware.  
-With this [short tutorial](https://github.com/allthingstalk/raspberrypi-python-client/wiki/Quick-setup-guide), you can set up your Grove Pi and have a script running in a few easy steps. 
