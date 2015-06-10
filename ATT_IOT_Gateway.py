@@ -65,15 +65,17 @@ GatewayId = None
 'the id of the gateway that we are using.'
 
 def connect(httpServer="api.smartliving.io"):
-    'connect with the http server'
+    """connect with the http server
+    :type httpServer: basestring
+                      The dns name of the server to use for HTTP communication
+    """
     global _httpClient, _httpServerName                                         # we assign to these vars first, so we need to make certain that they are declared as global, otherwise we create new local vars
     _httpClient = httplib.HTTPConnection(httpServer)
     _httpServerName = httpServer
     logging.info("connected with http server")
 
 def addAsset(id, deviceId, name, description, isActuator, assetType):
-    '''add an asset to the device. Use the specified name and description. 
-    :rtype : Nothing
+    '''add an asset to the device. Use the specified name and description.
     The asset type can be: string, int, bool, double, dateTime, timeSpan or a json schema to declare the content of data represented as json objects.'''
     
     if _RegisteredGateway == False:
@@ -158,7 +160,6 @@ def getGateway(includeDevices = True):
 
         logging.info("HTTP GET: " + url)
         logging.info("HTTP HEADER: " + str(headers))
-
         _httpClient.request("GET", url, "", headers)
         response = _httpClient.getresponse()
         logging.info((response.status, response.reason))
@@ -168,6 +169,8 @@ def getGateway(includeDevices = True):
             response.read()                                                     #need to clear the buffers.
     except:
         logging.exception("get gateway failed")
+        _httpClient.close()
+        connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
     return None
 
 def finishclaim(name, uid):
@@ -181,8 +184,14 @@ def finishclaim(name, uid):
     logging.info("HTTP HEADER: " + str(headers))
     logging.info("HTTP BODY:" + body)
 
-    _httpClient.request('POST', url, body, headers)
-    response = _httpClient.getresponse()
+    try:
+        _httpClient.request('POST', url, body, headers)
+        response = _httpClient.getresponse()
+    except:
+        logging.exception("finishClaim")
+        _httpClient.close()
+        connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
+        return False
     status = response.status
     logging.info((status, response.reason))
     response = response.read()
@@ -223,6 +232,8 @@ def getAssetState(assetId, deviceId):
             response.read()                                                     #need to clear the buffers.
     except Exception as e:
         logging.exception("get asset state failed")
+        _httpClient.close()
+        connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
     return None                                                                 # if we couldn't find a proper result, return null
 
 
@@ -262,8 +273,11 @@ def _sendData(url, body, headers, method = 'POST'):
         _httpClient.request(method, url, body, headers)
         response = _httpClient.getresponse()
     except:
-        _httpClient.close()
-        connect(_httpServerName)                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
+        try:
+            _httpClient.close()
+            connect(_httpServerName)                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
+        except:
+            logging.exception("reconnect after _sendData failed")
         raise
     logging.info((response.status, response.reason))
     logging.info(response.read())
