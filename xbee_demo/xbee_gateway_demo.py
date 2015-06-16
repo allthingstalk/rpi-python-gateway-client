@@ -4,7 +4,7 @@
 
 import serial
 from xbee import ZigBee
-import ATT_IOT_Gateway as IOT                              #provide cloud support
+import att_iot_gateway as IOT                              #provide cloud support
 
 #set up the ATT internet of things platform
 IOT.ClientId = "YourClientId"

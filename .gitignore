@@ -1,1 +1,7 @@
 *.pyc
+att_iot_gateway/.idea/
+xbee_demo/Env/
+att_iot_gateway/Env/
+att_iot_gateway/build/
+att_iot_gateway/dist/
+xbee_demo/.idea/
