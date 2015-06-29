@@ -2,7 +2,7 @@ from setuptools import *
 
 setup(
     name='att_iot_gateway',
-    version='1.0.1.dev1',
+    version='0.1.1',
     packages=find_packages(exclude=['pip', 'setuptools']),      # pip and setup tools are loaded in the virtual environment for the IDE.
     url='https://github.com/allthingstalk/rpi-python-gateway-client',
     license='MIT',
