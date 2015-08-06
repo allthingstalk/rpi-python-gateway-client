@@ -101,7 +101,7 @@ send a data value to the cloud server for the device and asset with the specifie
 
 _parameters:_
 
-1. value: (string) the value to send in the form of a string. So a boolean is sent as 'true' or 'false', an integer can be sent as '1' and a fload as '1.1'.  
+1. value: (string or object) the value to send in the form of a string. So a boolean is sent as 'true' or 'false', an integer can be sent as '1' and a fload as '1.1'.  
 You can also send an object or a python list with this function to the cloud. Objects will be converted to json objects, lists become json arrays. The fields/records in the json objects or arrays must be the same as defined in the profile.
 2. deviceId: (string) the id of the device that contains the asset you want to send a value for. 
 3. assetId: (string) the id of the asset to send the value to. This is the local id that you used while creating/updating the asset through the function 'AddAsset' Ex: '1'.

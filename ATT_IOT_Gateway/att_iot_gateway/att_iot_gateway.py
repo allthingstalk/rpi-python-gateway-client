@@ -74,14 +74,14 @@ def connect(httpServer="api.smartliving.io"):
     _httpServerName = httpServer
     logging.info("connected with http server")
 
-def addAsset(id, deviceId, name, description, isActuator, assetType):
+def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Undefined"):
     '''add an asset to the device. Use the specified name and description.
     The asset type can be: string, int, bool, double, dateTime, timeSpan or a json schema to declare the content of data represented as json objects.'''
     
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
 
-    body = '{"name":"' + name + '","description":"' + description + '","is":"'
+    body = '{"name":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
     if isActuator:
         body = body + 'actuator'
     else:
@@ -136,6 +136,28 @@ def deviceExists(deviceId):
     logging.info("HTTP HEADER: " + str(headers))
 
     return _sendData(url, "", headers, 'GET')
+
+
+def deleteDevice(deviceId):
+    '''
+        Deletes the specified device from the cloud.
+        returns true when successful.
+    '''
+    global DeviceId
+    if not DeviceId:
+        raise Exception("DeviceId not specified")
+    headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
+    url = "/Device/" + deviceId
+
+    print("HTTP DELETE: " + url)
+    print("HTTP HEADER: " + str(headers))
+    print("HTTP BODY: None")
+    _httpClient.request("DELETE", url, "", headers)
+    response = _httpClient.getresponse()
+    print(response.status, response.reason)
+    jsonStr =  response.read()
+    print(jsonStr)
+    return response.status == 204
 
 def createGateway(name, uid, assets = None):
     'create a new orphan gateway in the cloud'
@@ -236,7 +258,59 @@ def getAssetState(assetId, deviceId):
         connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
     return None                                                                 # if we couldn't find a proper result, return null
 
+def _buildPayLoadHTTP(value):
+    data = {"value": value, "at": datetime.utcnow().isoformat()}
+    return json.dumps(data)
 
+def sendValueHTTP(value, deviceId, assetId):
+    '''Sends a new value for an asset over http. This function is similar to send, accept that the latter uses mqtt
+       while this function uses HTTP'''
+    global DeviceId
+    if not DeviceId:
+        raise Exception("DeviceId not specified")
+    body = _buildPayLoadHTTP(value)
+    headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
+
+    devId = GatewayId
+    if deviceId != None:
+        devId = devId + "_" + deviceId
+
+    url = "/asset/" +  devId + str(assetId) + "/state"
+
+    print("HTTP PUT: " + url)
+    print("HTTP HEADER: " + str(headers))
+    print("HTTP BODY:" + body)
+    _httpClient.request("PUT", url, body, headers)
+    response = _httpClient.getresponse()
+    print(response.status, response.reason)
+    jsonStr =  response.read()
+    print(jsonStr)
+
+def sendCommandTo(value, assetId):
+    '''
+        Sends a command to an asset on another device.
+        The assetId should be the full id (string), as seen on the cloud app.
+        Note: you can only send commands to actuators that belong to devices in the same account as this device.
+
+        ex: sendCommandTo('122434545abc112', 1)
+    '''
+    typeOfVal = type(value)
+    if typeOfVal in [types.IntType, types.BooleanType, types.FloatType, types.LongType, types.StringType]:      # if it's a basic type: send as csv, otherwise as json.
+        body = str(value)
+    else:
+        body = json.dumps(value)
+
+    headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
+    url = "/asset/" +  assetId + "/command"
+
+    print("HTTP PUT: " + url)
+    print("HTTP HEADER: " + str(headers))
+    print("HTTP BODY:" + body)
+    _httpClient.request("PUT", url, body, headers)
+    response = _httpClient.getresponse()
+    print(response.status, response.reason)
+    jsonStr =  response.read()
+    print(jsonStr)
 
 def _storeCredentials(gateway):
     'extracts all the relevant info from the gateway response object'
