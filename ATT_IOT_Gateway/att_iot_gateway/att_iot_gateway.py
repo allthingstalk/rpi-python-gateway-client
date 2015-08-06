@@ -147,7 +147,7 @@ def deleteDevice(deviceId):
     if not DeviceId:
         raise Exception("DeviceId not specified")
     headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
-    url = "/Device/" + deviceId
+    url = "/Device/" + GatewayId + "_" + deviceId
 
     print("HTTP DELETE: " + url)
     print("HTTP HEADER: " + str(headers))
