@@ -19,7 +19,10 @@ _manually_
 
 ### Instructions
 
-  1. Setup the hardware
-  2. Open the 'xbee_gateway_demo.py' template script: `sudo nano xbee_gateway_demo.py`
-  3. fill in the missing strings: replace clientId, clientKey. 
-  4. Run the script: `python xbee_gateway_demo.py`
+1. Set up your xbee hardware
+  2. Get the mac address of your RPI `ifconfig`
+  2. Run the script: `python xbee_gateway_demo.py`
+  3. Go to the website and 
+  4. claim your gateway using the mac address from step 2  
+
+
