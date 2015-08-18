@@ -5,4 +5,3 @@ __maintainer__ = "Jan Bogaerts"
 __email__ = "jb@allthingstalk.com"
 __status__ = "Prototype"  #  "Development", or "Production"
 
-from .ATT_IOT_Gateway import *
