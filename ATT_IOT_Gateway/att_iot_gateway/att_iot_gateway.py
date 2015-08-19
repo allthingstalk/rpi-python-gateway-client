@@ -37,8 +37,8 @@ def on_MQTTmessage(client, userdata, msg):
     logging.info("Incoming message - topic: " + msg.topic + ", payload: " + payload)
     topicParts = msg.topic.split("/")
     if on_message is not None:
-        idParts = topicParts[-2].split("_")
-        on_message(idParts[1], idParts[2], msg.payload)									#we want the second last value in the array, the last one is 'command'
+        # idParts = topicParts[-2].split("_")
+        on_message(topicParts[-4], topicParts[-2], msg.payload)									#we want the second last value in the array, the last one is 'command'
 
 def on_MQTTSubscribed(client, userdata, mid, granted_qos):
     logging.info("Subscribed to topic, receiving data from the cloud: qos=" + str(granted_qos))
@@ -95,7 +95,7 @@ def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Un
     else:
         body = body + '","profile": {"type":"' + assetType + '" },"deviceId":"' + devId + '" }'
     headers = _buildHeaders()
-    url = "/api/asset/" + devId + "_" + str(id)
+    url = "/device/" + devId + "/asset/" + str(id)
 	
     logging.info("HTTP PUT: " + url)
     logging.info("HTTP HEADER: " + str(headers))
@@ -112,7 +112,7 @@ def addDevice(deviceId, name, description):
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
 
-    body = '{"id":"' + GatewayId + '_' + deviceId + '","name":"' + name + '","description":"' + description + '" }'
+    body = '{"local":"' +  deviceId + '","name":"' + name + '","description":"' + description + '" }'
     headers = _buildHeaders()
     url = "/api/device"
 	
@@ -130,7 +130,7 @@ def deviceExists(deviceId):
         raise Exception('gateway must be registered')
     
     headers = _buildHeaders()
-    url = "/api/device/" + GatewayId + "_" + deviceId
+    url = "/api/device/" + deviceId
 	
     logging.info("HTTP GET: " + url)
     logging.info("HTTP HEADER: " + str(headers))
@@ -147,7 +147,7 @@ def deleteDevice(deviceId):
     if not DeviceId:
         raise Exception("DeviceId not specified")
     headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
-    url = "/Device/" + GatewayId + "_" + deviceId
+    url = "/Device/"  + deviceId
 
     print("HTTP DELETE: " + url)
     print("HTTP HEADER: " + str(headers))
@@ -235,7 +235,7 @@ def getAssetState(assetId, deviceId):
         devId = GatewayId
         if deviceId != None:
             devId = devId + "_" + deviceId
-        url = "/asset/" + devId + "_" + str(assetId) + "/state"
+        url = "/device/" + devId + "/asset/" + str(assetId) + "/state"
     
         logging.info("HTTP GET: " + url)
         logging.info("HTTP HEADER: " + str(headers))
@@ -275,7 +275,7 @@ def sendValueHTTP(value, deviceId, assetId):
     if deviceId != None:
         devId = devId + "_" + deviceId
 
-    url = "/asset/" +  devId + str(assetId) + "/state"
+    url = "/device/" +  devId + "/asset/" + str(assetId) + "/state"
 
     print("HTTP PUT: " + url)
     print("HTTP HEADER: " + str(headers))
