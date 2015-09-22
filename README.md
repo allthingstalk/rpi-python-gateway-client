@@ -3,7 +3,7 @@ raspberrypi-python-client
 
 libraries that provide access to the ATT IOT platform, for the Python language (geared for gateway development).
 
-Check the [api docs](#library.md) for more info.
+Check the [api docs](https://github.com/allthingstalk/rpi-python-gateway-client/blob/master/library.md) for more info.
 
 
 ### Installation
