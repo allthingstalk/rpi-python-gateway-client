@@ -1,23 +1,22 @@
 #!/usr/bin/python
 
-# not yet supported
+# in this example, a basic gateway is created in the cloud and tries to create a single device, with a single asset and send a single value to the cloud
+# the setup is done in such a way that the gateway continuously tries to discover new devices and create them in the cloud -> this can be used as a basic starting point for proper gateway devices.
 
 import logging
-logging.getLogger().setLevel(logging.INFO) 
+logging.getLogger().setLevel(logging.INFO)
 
-import serial
 from time import sleep                             #pause the app
 from ConfigParser import *
 from uuid import getnode as get_mac
-from xbee import ZigBee
 import att_iot_gateway as IOT                              #provide cloud support
 
 def connect():
     'set up the connection with the cloud + register the gateway'
     IOT.on_message = on_message
-    IOT.connect()           #"att-capp-2.cloudapp.net"
+    IOT.connect("dev-att-capp-api.cloudapp.net")           #"dev-att-capp-api.cloudapp.net"
     if authenticate():
-        IOT.subscribe()              							#starts the bi-directional communication   "att-2.cloudapp.net"
+        IOT.subscribe("att-2.cloudapp.net")              							#starts the bi-directional communication   "att-2.cloudapp.net"
     else:
         raise Exception("Failed to authenticate with IOT platform")
 
@@ -30,9 +29,9 @@ def authenticate(maxClaim = 30):
     '''
     if _tryLoadConfig() == False:
         uid = _getUid();
-        IOT.createGateway("xbee gateway", uid)
+        IOT.createGateway("generic gateway", uid)
         while True:                                     # we try to finish the claim process until success or app quits, cause the app can't continue without a valid and claimed gateway
-            if IOT.finishclaim("xbee gateway", uid):
+            if IOT.finishclaim("generic gateway", uid):
                 _storeConfig()
                 sleep(2)                                # give the platform a litle time to set up all the configs so that we can subscribe correctly to the topic. If we don't do this, the subscribe could fail
                 return True
@@ -86,21 +85,9 @@ def _getUid():
     return result
 
 
-
-
-#serial_port = serial.Serial('/dev/ttyUSB0', 9600)        #for linux
-serial_port = serial.Serial('COM3', 9600)                 #for windows
-zb = ZigBee(serial_port)
-
 #callback: handles values sent from the cloudapp to the device
 def on_message(device, actuator, value):
-    if actuator == "1":
-        if value == "true":
-            #note: best to store the destination address (long and short) from the incomming packets, so it becomes dynamic
-            zb.send("remote_at", frame="A", command="D4", dest_addr_long = '\x00\x13\xa2\x00@w\x0f\xd2', dest_addr="QH",parameter='\x05')        # should turn on relay
-        else:
-            zb.send("remote_at", frame="A", command="D4", dest_addr_long = '\x00\x13\xa2\x00@w\x0f\xd2', dest_addr="QH",parameter='\x04')        # should turn off relay
-
+    print("received: " + value + ", for device: " + device + ", actuator: " + actuator)
 
 devices = []                                           #contains the list of devices already connected to the
 
@@ -108,10 +95,7 @@ devices = []                                           #contains the list of dev
 connect()
 while True:
     try:
-        data = zb.wait_read_frame() #Get data for later use
-        print "found data: "
-        print data
-        deviceId = data['source_addr_long'].encode("HEX")
+        deviceId = '1'
         if deviceId not in devices:                     										#if we haven't seen this deviceId yet, check if we need to create a new device for it
             devices.append(deviceId)
             print "Check if device already known in IOT"
@@ -119,12 +103,10 @@ while True:
                 print "creating new device"
                 IOT.addDevice(deviceId, 'name of the device', "description of the device" )		#adjust according to your needs
                 IOT.addAsset(1, deviceId, 'relay', 'switch something on/off', True, 'boolean')	#adjust according to your needs
-        # IOT.send(data['samples'][0]['adc-1'], deviceId, 1)									#adjust according to your needs
-        # IOT.send(data['samples'][0]['adc-2'], deviceId, 2)									#adjust according to your needs
-        # IOT.send(data['samples'][0]['adc-3'], deviceId, 3)									#adjust according to your needs
+                IOT.send("true", deviceId, 1)
+		sleep(3)
     except KeyboardInterrupt:                                                    				#stop the script
         break
     except ValueError as e:                                                      				#in case of an xbee error: print it and try to continue
         print e
 
-serial_port.close()																				#when done, close serial port	

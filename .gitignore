@@ -6,3 +6,4 @@ att_iot_gateway/build/
 att_iot_gateway/dist/
 xbee_demo/.idea/
 att_iot_gateway/pwd for pip.txt
+generic_demo/.idea/
