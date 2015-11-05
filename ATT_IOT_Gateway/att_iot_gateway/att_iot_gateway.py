@@ -95,7 +95,7 @@ def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Un
     else:
         body = body + '","profile": {"type":"' + assetType + '" },"deviceId":"' + devId + '" }'
     headers = _buildHeaders()
-    url = "/api/asset/" + devId + "_" + str(id)
+    url = "/asset/" + devId + "_" + str(id)
 	
     logging.info("HTTP PUT: " + url)
     logging.info("HTTP HEADER: " + str(headers))
@@ -114,7 +114,7 @@ def addDevice(deviceId, name, description):
 
     body = '{"id":"' + GatewayId + '_' + deviceId + '","name":"' + name + '","description":"' + description + '" }'
     headers = _buildHeaders()
-    url = "/api/device"
+    url = "/device"
 	
     logging.info("HTTP POST: " + url)
     logging.info("HTTP HEADER: " + str(headers))
@@ -130,7 +130,7 @@ def deviceExists(deviceId):
         raise Exception('gateway must be registered')
     
     headers = _buildHeaders()
-    url = "/api/device/" + GatewayId + "_" + deviceId
+    url = "/device/" + GatewayId + "_" + deviceId
 	
     logging.info("HTTP GET: " + url)
     logging.info("HTTP HEADER: " + str(headers))
