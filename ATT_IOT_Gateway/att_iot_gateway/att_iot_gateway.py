@@ -102,6 +102,33 @@ def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Un
     logging.info("HTTP BODY:" + body)
 
     return _sendData(url, body, headers, 'PUT')
+	
+def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undefined"):
+	'''add an asset to the gateway'''
+	if _RegisteredGateway == False:
+        raise Exception('gateway must be registered')
+
+    body = '{"name":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
+    if isActuator:
+        body = body + 'actuator'
+    else:
+        body = body + 'sensor'
+
+    devId = GatewayId
+    if deviceId != None:
+        devId += ('_' + deviceId)
+    if assetType[0] == '{':                 # if the asset type is complex (starts with {', then render the body a little different
+        body = body + '","profile":' + assetType + ',"deviceId":"' + devId + '" }'
+    else:
+        body = body + '","profile": {"type":"' + assetType + '" }}'
+    headers = _buildHeaders()
+    url = "/asset/" + str(id)
+	
+    logging.info("HTTP PUT: " + url)
+    logging.info("HTTP HEADER: " + str(headers))
+    logging.info("HTTP BODY:" + body)
+
+    return _sendData(url, body, headers, 'PUT')	
 
 def addDevice(deviceId, name, description):
     '''creates a new device in the IOT platform. The deviceId gets appended with the value  <GatewayId>_
