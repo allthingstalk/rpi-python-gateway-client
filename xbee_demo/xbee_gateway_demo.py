@@ -18,12 +18,10 @@ def connect():
     else:
         raise Exception("Failed to authenticate with IOT platform")
 
-def authenticate(maxClaim = 30):
+def authenticate():
     '''if authentication had previously succeeded, loads credentials and validates them with the platform
        if not previously authenticated: register as gateway and wait until user has claimed it
        params:
-       uid: string = a value that uniquely identifies this device. Usually a mac address
-       maxClaim: int = nr of times that system should try to finish the claim (waits for 1second between tries) before timing out if the user has to claim the gateway in the cloud
     '''
     if _tryLoadConfig() == False:
         uid = _getUid();
