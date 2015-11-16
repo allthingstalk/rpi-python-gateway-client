@@ -130,6 +130,23 @@ def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undef
 
     return _sendData(url, body, headers, 'PUT')	
 
+def deleteAsset(device, id):	
+	global device
+    if not device:
+        raise Exception("DeviceId not specified")
+    headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
+    url = "/asset/" + GatewayId + "_" + device + "_" + id
+
+    print("HTTP DELETE: " + url)
+    print("HTTP HEADER: " + str(headers))
+    print("HTTP BODY: None")
+    _httpClient.request("DELETE", url, "", headers)
+    response = _httpClient.getresponse()
+    print(response.status, response.reason)
+    jsonStr =  response.read()
+    print(jsonStr)
+    return response.status == 204
+	
 def addDevice(deviceId, name, description):
     '''creates a new device in the IOT platform. The deviceId gets appended with the value  <GatewayId>_
     if the device already exists, the function will fail
@@ -169,9 +186,9 @@ def deleteDevice(deviceId):
         Deletes the specified device from the cloud.
         returns true when successful.
     '''
-    global DeviceId
-    if not DeviceId:
-        raise Exception("DeviceId not specified")
+    global deviceId
+    if not deviceId:
+        raise Exception("deviceId not specified")
     headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
     url = "/Device/" + GatewayId + "_" + deviceId
 
