@@ -95,7 +95,7 @@ def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Un
     else:
         body = body + '","profile": {"type":"' + assetType + '" },"deviceId":"' + devId + '" }'
     headers = _buildHeaders()
-    url = "/asset/" + devId + "_" + str(id)
+    url = "/device/" + devId + "/asset/" + str(id)
 	
     logging.info("HTTP PUT: " + url)
     logging.info("HTTP HEADER: " + str(headers))
@@ -135,7 +135,7 @@ def deleteAsset(device, id):
     if not device:
         raise Exception("DeviceId not specified")
     headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
-    url = "/device/" + device  + "/" +  id
+    url = "/asset/" + GatewayId + "_" + device + "_" + id
 
     print("HTTP DELETE: " + url)
     print("HTTP HEADER: " + str(headers))
@@ -155,7 +155,7 @@ def addDevice(deviceId, name, description):
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
 
-    body = '{"name":"'  + deviceId + '","label":"' + name + '","description":"' + description + '" }'
+    body = '{"local":"' +  deviceId + '","name":"' + name + '","description":"' + description + '" }'
     headers = _buildHeaders()
     url = "/device"
 	
@@ -173,7 +173,7 @@ def deviceExists(deviceId):
         raise Exception('gateway must be registered')
     
     headers = _buildHeaders()
-    url = "/device/" + GatewayId + "_" + deviceId
+    url = "/api/device/" + deviceId
 	
     logging.info("HTTP GET: " + url)
     logging.info("HTTP HEADER: " + str(headers))
@@ -186,8 +186,11 @@ def deleteDevice(deviceId):
         Deletes the specified device from the cloud.
         returns true when successful.
     '''
+    global deviceId
+    if not deviceId:
+        raise Exception("deviceId not specified")
     headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
-    url = "/Device/" + deviceId
+    url = "/Device/"  + deviceId
 
     print("HTTP DELETE: " + url)
     print("HTTP HEADER: " + str(headers))
@@ -315,7 +318,7 @@ def sendValueHTTP(value, deviceId, assetId):
     if deviceId != None:
         devId = devId + "_" + deviceId
 
-    url = "/device/" +  devId + '/asset/' + str(assetId) + "/state"
+    url = "/device/" +  devId + "/asset/" + str(assetId) + "/state"
 
     print("HTTP PUT: " + url)
     print("HTTP HEADER: " + str(headers))
@@ -326,6 +329,31 @@ def sendValueHTTP(value, deviceId, assetId):
     jsonStr =  response.read()
     print(jsonStr)
 
+def sendCommandTo(value, assetId):
+    '''
+        Sends a command to an asset on another device.
+        The assetId should be the full id (string), as seen on the cloud app.
+        Note: you can only send commands to actuators that belong to devices in the same account as this device.
+
+        ex: sendCommandTo('122434545abc112', 1)
+    '''
+    typeOfVal = type(value)
+    if typeOfVal in [types.IntType, types.BooleanType, types.FloatType, types.LongType, types.StringType]:      # if it's a basic type: send as csv, otherwise as json.
+        body = str(value)
+    else:
+        body = json.dumps(value)
+
+    headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
+    url = "/asset/" +  assetId + "/command"
+
+    print("HTTP PUT: " + url)
+    print("HTTP HEADER: " + str(headers))
+    print("HTTP BODY:" + body)
+    _httpClient.request("PUT", url, body, headers)
+    response = _httpClient.getresponse()
+    print(response.status, response.reason)
+    jsonStr =  response.read()
+    print(jsonStr)
 
 def _storeCredentials(gateway):
     'extracts all the relevant info from the gateway response object'
@@ -426,9 +454,9 @@ def send(value, deviceId, assetId):
 
     toSend = _buildPayLoad(value)
     if deviceId != None:
-        topic = "client/" + ClientId + "/out/device/" + deviceId + "/asset/" + "/state"             # also need a topic to publish to
+        topic = "client/" + ClientId + "/out/asset/" + GatewayId + "_" + deviceId + "_" + str(assetId) + "/state"             # also need a topic to publish to
     else:
-        topic = "client/" + ClientId + "/out/asset/" + str(assetId) + "/state"
+        topic = "client/" + ClientId + "/out/asset/" + GatewayId + "_" + str(assetId) + "/state"
     if PRINTPBUSLISH == True:                                                                                             # only show this in debug mode, so that we don't fload logs with masssive list of topic publish.
         logging.info("Publishing message - topic: " + topic + ", payload: " + toSend)
     _mqttClient.publish(topic, toSend, 0, False)
