@@ -21,10 +21,10 @@ def on_connect(client, userdata, rc):
         msg = "Connected to mqtt broker with result code "+str(rc)
         logging.info(msg)
     else:
-        logging.error("Failed to connect to mqtt broker " )
+        logging.error("Failed to connect to mqtt broker, error: " + mqtt.connack_string(rc))
         return
     
-    topic = "client/" + ClientId + "/in/gateway/" + GatewayId + "/#/command"                            #subscribe to the topics for the device
+    topic = "gateway/" + GatewayId + "/#/command"                                           #subscribe to the topics for the device
     logging.info("subscribing to: " + topic)
     result = _mqttClient.subscribe(topic)                                                    #Subscribing in on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
     logging.info(result)
@@ -38,7 +38,7 @@ def on_MQTTmessage(client, userdata, msg):
     topicParts = msg.topic.split("/")
     if on_message is not None:
         idParts = topicParts[-2].split("_")
-        on_message(idParts[1], idParts[2], msg.payload)									#we want the second last value in the array, the last one is 'command'
+        on_message(idParts[1], idParts[2], msg.payload)                                 #we want the second last value in the array, the last one is 'command'
 
 def on_MQTTSubscribed(client, userdata, mid, granted_qos):
     logging.info("Subscribed to topic, receiving data from the cloud: qos=" + str(granted_qos))
@@ -81,22 +81,19 @@ def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Un
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
 
-    body = '{"name":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
+    body = '{"label":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
     if isActuator:
         body = body + 'actuator'
     else:
         body = body + 'sensor'
 
-    devId = GatewayId
-    if deviceId != None:
-        devId += ('_' + deviceId)
     if assetType[0] == '{':                 # if the asset type is complex (starts with {', then render the body a little different
-        body = body + '","profile":' + assetType + ',"deviceId":"' + devId + '" }'
+        body = body + '","profile":' + assetType + '}'
     else:
-        body = body + '","profile": {"type":"' + assetType + '" },"deviceId":"' + devId + '" }'
+        body = body + '","profile": {"type":"' + assetType + '" }}'
     headers = _buildHeaders()
-    url = "/asset/" + devId + "_" + str(id)
-	
+    url = "/device/" + deviceId + "/asset/" + str(id)
+    
     logging.info("HTTP PUT: " + url)
     logging.info("HTTP HEADER: " + str(headers))
     logging.info("HTTP BODY:" + body)
@@ -104,8 +101,8 @@ def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Un
     return _sendData(url, body, headers, 'PUT')
 
 def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undefined"):
-	'''add an asset to the gateway'''
-	if _RegisteredGateway == False:
+    '''add an asset to the gateway'''
+    if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
 
     body = '{"name":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
@@ -114,28 +111,24 @@ def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undef
     else:
         body = body + 'sensor'
 
-    devId = GatewayId
-    if deviceId != None:
-        devId += ('_' + deviceId)
     if assetType[0] == '{':                 # if the asset type is complex (starts with {', then render the body a little different
-        body = body + '","profile":' + assetType + ',"deviceId":"' + devId + '" }'
+        body = body + '","profile":' + assetType + '}'
     else:
         body = body + '","profile": {"type":"' + assetType + '" }}'
     headers = _buildHeaders()
     url = "/asset/" + str(id)
-	
+    
     logging.info("HTTP PUT: " + url)
     logging.info("HTTP HEADER: " + str(headers))
     logging.info("HTTP BODY:" + body)
 
-    return _sendData(url, body, headers, 'PUT')	
+    return _sendData(url, body, headers, 'PUT') 
 
-def deleteAsset(device, id):	
-	global device
+def deleteAsset(device, id):    
     if not device:
         raise Exception("DeviceId not specified")
     headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
-    url = "/device/" + device  + "/" +  id
+    url = "/device/" + device  + "/" + str(id)
 
     print("HTTP DELETE: " + url)
     print("HTTP HEADER: " + str(headers))
@@ -146,7 +139,7 @@ def deleteAsset(device, id):
     jsonStr =  response.read()
     print(jsonStr)
     return response.status == 204
-	
+    
 def addDevice(deviceId, name, description):
     '''creates a new device in the IOT platform. The deviceId gets appended with the value  <GatewayId>_
     if the device already exists, the function will fail
@@ -158,7 +151,7 @@ def addDevice(deviceId, name, description):
     body = '{"name":"'  + deviceId + '","label":"' + name + '","description":"' + description + '" }'
     headers = _buildHeaders()
     url = "/device"
-	
+    
     logging.info("HTTP POST: " + url)
     logging.info("HTTP HEADER: " + str(headers))
     logging.info("HTTP BODY:" + body)
@@ -174,7 +167,7 @@ def deviceExists(deviceId):
     
     headers = _buildHeaders()
     url = "/device/" + GatewayId + "_" + deviceId
-	
+    
     logging.info("HTTP GET: " + url)
     logging.info("HTTP HEADER: " + str(headers))
 
@@ -208,7 +201,7 @@ def createGateway(name, uid, assets = None):
         body = '{"uid":"' + uid + '","name":"' + name + '", "assets":' + json.dumps(assets) + ' }'
     headers = {"Content-type": "application/json"}
     url = "/gateway"
-	
+    
     logging.info("HTTP POST: " + url)
     logging.info("HTTP HEADER: " + str(headers))
     logging.info("HTTP BODY:" + body)
@@ -305,17 +298,10 @@ def _buildPayLoadHTTP(value):
 def sendValueHTTP(value, deviceId, assetId):
     '''Sends a new value for an asset over http. This function is similar to send, accept that the latter uses mqtt
        while this function uses HTTP'''
-    global DeviceId
-    if not DeviceId:
-        raise Exception("DeviceId not specified")
     body = _buildPayLoadHTTP(value)
     headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
 
-    devId = GatewayId
-    if deviceId != None:
-        devId = devId + "_" + deviceId
-
-    url = "/device/" +  devId + '/asset/' + str(assetId) + "/state"
+    url = "/device/" +  deviceId + '/asset/' + str(assetId) + "/state"
 
     print("HTTP PUT: " + url)
     print("HTTP HEADER: " + str(headers))
@@ -398,7 +384,7 @@ def subscribe(mqttServer = "broker.smartliving.io", port = 1883):
         raise Exception("ClientId not specified, can't connect to broker")
     brokerId = ClientId + ":" + ClientId
     _mqttClient.username_pw_set(brokerId, ClientKey);
-	
+    
     _mqttClient.connect(mqttServer, port, 60)
     _mqttClient.loop_start()
 
@@ -426,9 +412,9 @@ def send(value, deviceId, assetId):
 
     toSend = _buildPayLoad(value)
     if deviceId != None:
-        topic = "client/" + ClientId + "/out/device/" + deviceId + "/asset/" + "/state"             # also need a topic to publish to
+        topic = "gateway/" + GatewayId + "/device/" + deviceId + "/asset/" + str(assetId) + "/state"             # also need a topic to publish to
     else:
-        topic = "client/" + ClientId + "/out/asset/" + str(assetId) + "/state"
+        topic = "gateway/" + GatewayId + "/asset/" + str(assetId) + "/state"
     if PRINTPBUSLISH == True:                                                                                             # only show this in debug mode, so that we don't fload logs with masssive list of topic publish.
         logging.info("Publishing message - topic: " + topic + ", payload: " + toSend)
     _mqttClient.publish(topic, toSend, 0, False)
