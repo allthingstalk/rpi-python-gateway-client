@@ -14,9 +14,9 @@ import att_iot_gateway as IOT                              #provide cloud suppor
 def connect():
     'set up the connection with the cloud + register the gateway'
     IOT.on_message = on_message
-    IOT.connect("dev-att-capp-api.cloudapp.net")           #"dev-att-capp-api.cloudapp.net"
+    IOT.connect()          
     if authenticate():
-        IOT.subscribe("att-2.cloudapp.net")              							#starts the bi-directional communication   "att-2.cloudapp.net"
+        IOT.subscribe()              							#starts the bi-directional communication  
     else:
         raise Exception("Failed to authenticate with IOT platform")
 
