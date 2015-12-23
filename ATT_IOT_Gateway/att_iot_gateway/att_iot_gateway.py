@@ -12,8 +12,6 @@ import json                                    # in case the data we need to sen
 import unicodedata                              # for converting unicode to regular strings
 
 
-PRINTPBUSLISH = True                                       # if you want to have a debug line on every publish, turn this on.
-
 def on_connect(client, userdata, rc):
     'The callback for when the client receives a CONNACK response from the server.'
 
@@ -24,7 +22,8 @@ def on_connect(client, userdata, rc):
         logging.error("Failed to connect to mqtt broker, error: " + mqtt.connack_string(rc))
         return
     
-    topic = "gateway/" + GatewayId + "/#/command"                                           #subscribe to the topics for the device
+    topic = 'client/' + ClientId + "/in/gateway/" + GatewayId + "/#/command"                                           #subscribe to the topics for the device
+    #topic = '#'
     logging.info("subscribing to: " + topic)
     result = _mqttClient.subscribe(topic)                                                    #Subscribing in on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
     logging.info(result)
@@ -37,8 +36,19 @@ def on_MQTTmessage(client, userdata, msg):
     logging.info("Incoming message - topic: " + msg.topic + ", payload: " + payload)
     topicParts = msg.topic.split("/")
     if on_message is not None:
-        idParts = topicParts[-2].split("_")
-        on_message(idParts[1], idParts[2], msg.payload)                                 #we want the second last value in the array, the last one is 'command'
+        try:
+            if len(topicParts) >= 7:
+                if topicParts[5] == 'device':   # 3
+                    devId = topicParts[6]       # 4
+                    assetId = topicParts[8]
+                else:
+                    devId = None
+                    assetId = topicParts[6]
+                on_message(devId, assetId, msg.payload)                                 #we want the second last value in the array, the last one is 'command'
+            else:
+                logging.error("unknown topic format: " + msg.topic)
+        except:
+            logging.exception("failed to process actuator command: " + msg.topic + ", payload: " + msg.payload)
 
 def on_MQTTSubscribed(client, userdata, mid, granted_qos):
     logging.info("Subscribed to topic, receiving data from the cloud: qos=" + str(granted_qos))
@@ -76,12 +86,15 @@ def connect(httpServer="api.smartliving.io"):
 
 def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Undefined"):
     '''add an asset to the device. Use the specified name and description.
-    The asset type can be: string, int, bool, double, dateTime, timeSpan or a json schema to declare the content of data represented as json objects.'''
+    The asset type can be: string, int, bool, double, dateTime, timeSpan or a json schema to declare the content of data represented as json objects.
+    :type style: string
+    :param style: how is the asset displayed in the system. Supported values: 'Undefined', 'Primary', 'Config', 'Battery', 'Secondary'
+    '''
     
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
 
-    body = '{"label":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
+    body = '{"title":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
     if isActuator:
         body = body + 'actuator'
     else:
@@ -105,7 +118,7 @@ def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undef
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
 
-    body = '{"name":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
+    body = '{"title":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
     if isActuator:
         body = body + 'actuator'
     else:
@@ -127,7 +140,7 @@ def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undef
 def deleteAsset(device, id):    
     if not device:
         raise Exception("DeviceId not specified")
-    headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
+    headers = _buildHeaders()
     url = "/device/" + device  + "/" + str(id)
 
     print("HTTP DELETE: " + url)
@@ -135,9 +148,9 @@ def deleteAsset(device, id):
     print("HTTP BODY: None")
     _httpClient.request("DELETE", url, "", headers)
     response = _httpClient.getresponse()
-    print(response.status, response.reason)
+    logging.info((response.status, response.reason))
     jsonStr =  response.read()
-    print(jsonStr)
+    logging.info(jsonStr)
     return response.status == 204
     
 def addDevice(deviceId, name, description):
@@ -147,16 +160,16 @@ def addDevice(deviceId, name, description):
     
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
-
-    body = '{"name":"'  + deviceId + '","label":"' + name + '","description":"' + description + '" }'
+    body = '{"title":"' + name + '","description":"' + description + '", "type": "custom" }'
+    #body = '{"title":"' + name + '","type": "custom" }'
     headers = _buildHeaders()
-    url = "/device"
+    url = "/device/" + deviceId
     
-    logging.info("HTTP POST: " + url)
+    logging.info("HTTP PUT: " + url)
     logging.info("HTTP HEADER: " + str(headers))
     logging.info("HTTP BODY:" + body)
 
-    return _sendData(url, body, headers)
+    return _sendData(url, body, headers, 'PUT')
 
 def deviceExists(deviceId):
     '''checks if the device already exists in the IOT platform.
@@ -179,17 +192,17 @@ def deleteDevice(deviceId):
         Deletes the specified device from the cloud.
         returns true when successful.
     '''
-    headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
+    headers = _buildHeaders()
     url = "/Device/" + deviceId
 
-    print("HTTP DELETE: " + url)
-    print("HTTP HEADER: " + str(headers))
-    print("HTTP BODY: None")
+    logging.info("HTTP DELETE: " + url)
+    logging.info("HTTP HEADER: " + str(headers))
+    logging.info("HTTP BODY: None")
     _httpClient.request("DELETE", url, "", headers)
     response = _httpClient.getresponse()
-    print(response.status, response.reason)
+    logging.info((response.status, response.reason))
     jsonStr =  response.read()
-    print(jsonStr)
+    logging.info(jsonStr)
     return response.status == 204
 
 def createGateway(name, uid, assets = None):
@@ -295,23 +308,6 @@ def _buildPayLoadHTTP(value):
     data = {"value": value, "at": datetime.utcnow().isoformat()}
     return json.dumps(data)
 
-def sendValueHTTP(value, deviceId, assetId):
-    '''Sends a new value for an asset over http. This function is similar to send, accept that the latter uses mqtt
-       while this function uses HTTP'''
-    body = _buildPayLoadHTTP(value)
-    headers = {"Content-type": "application/json", "Auth-ClientKey": ClientKey, "Auth-ClientId": ClientId}
-
-    url = "/device/" +  deviceId + '/asset/' + str(assetId) + "/state"
-
-    print("HTTP PUT: " + url)
-    print("HTTP HEADER: " + str(headers))
-    print("HTTP BODY:" + body)
-    _httpClient.request("PUT", url, body, headers)
-    response = _httpClient.getresponse()
-    print(response.status, response.reason)
-    jsonStr =  response.read()
-    print(jsonStr)
-
 
 def _storeCredentials(gateway):
     'extracts all the relevant info from the gateway response object'
@@ -411,10 +407,10 @@ def send(value, deviceId, assetId):
         raise Exception('gateway must be registered')
 
     toSend = _buildPayLoad(value)
+    topic = "client/" + ClientId + "/out/gateway/" + GatewayId
     if deviceId != None:
-        topic = "gateway/" + GatewayId + "/device/" + deviceId + "/asset/" + str(assetId) + "/state"             # also need a topic to publish to
+        topic += "/device/" + deviceId + "/asset/" + str(assetId) + "/state"             # also need a topic to publish to
     else:
-        topic = "gateway/" + GatewayId + "/asset/" + str(assetId) + "/state"
-    if PRINTPBUSLISH == True:                                                                                             # only show this in debug mode, so that we don't fload logs with masssive list of topic publish.
-        logging.info("Publishing message - topic: " + topic + ", payload: " + toSend)
+        topic += "/asset/" + str(assetId) + "/state"
+    logging.info("Publishing message - topic: " + topic + ", payload: " + toSend)
     _mqttClient.publish(topic, toSend, 0, False)
