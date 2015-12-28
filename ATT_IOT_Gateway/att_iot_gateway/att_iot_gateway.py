@@ -153,15 +153,21 @@ def deleteAsset(device, id):
     logging.info(jsonStr)
     return response.status == 204
     
-def addDevice(deviceId, name, description):
+def addDevice(deviceId, name, description, activateActivity = False):
     '''creates a new device in the IOT platform. The deviceId gets appended with the value  <GatewayId>_
     if the device already exists, the function will fail
-    returns True if the operation was succesful, otherwise False'''
+    :rtype : None
+    returns True if the operation was succesful, otherwise False
+    :param deviceId:
+    :param name:
+    :param description:
+    :param activateActivity:When true, historical data will be recorded for this device.
+    :type activateActivity: bool
+    '''
     
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
-    body = '{"title":"' + name + '","description":"' + description + '", "type": "custom" }'
-    #body = '{"title":"' + name + '","type": "custom" }'
+    body = '{"title":"' + name + '","description":"' + description + '", "type": "custom", "activityEnabled": ' + str(activateActivity).lower() + '}'
     headers = _buildHeaders()
     url = "/device/" + deviceId
     
@@ -179,7 +185,7 @@ def deviceExists(deviceId):
         raise Exception('gateway must be registered')
     
     headers = _buildHeaders()
-    url = "/device/" + GatewayId + "_" + deviceId
+    url = "/device/" + deviceId
     
     logging.info("HTTP GET: " + url)
     logging.info("HTTP HEADER: " + str(headers))
@@ -278,10 +284,7 @@ def getAssetState(assetId, deviceId):
         if _RegisteredGateway == False:
             raise Exception('gateway must be registered')
         headers = _buildHeaders()
-        devId = GatewayId
-        if deviceId != None:
-            devId = devId + "_" + deviceId
-        url = "/device/" + devId + "/asset/" + str(assetId) + "/state"
+        url = "/device/" + deviceId + "/asset/" + str(assetId) + "/state"
     
         logging.info("HTTP GET: " + url)
         logging.info("HTTP HEADER: " + str(headers))
@@ -343,6 +346,9 @@ def _sendData(url, body, headers, method = 'POST'):
     try:
         _httpClient.request(method, url, body, headers)
         response = _httpClient.getresponse()
+        logging.info((response.status, response.reason))
+        logging.info(response.read())
+        return response.status == 200
     except:
         try:
             _httpClient.close()
@@ -350,9 +356,6 @@ def _sendData(url, body, headers, method = 'POST'):
         except:
             logging.exception("reconnect after _sendData failed")
         raise
-    logging.info((response.status, response.reason))
-    logging.info(response.read())
-    return response.status == 200
 
 def _buildHeaders():
     return {"Content-type": "application/json", "Auth-GatewayKey": ClientKey, "Auth-GatewayId": GatewayId}
