@@ -146,12 +146,7 @@ def deleteAsset(device, id):
     print("HTTP DELETE: " + url)
     print("HTTP HEADER: " + str(headers))
     print("HTTP BODY: None")
-    _httpClient.request("DELETE", url, "", headers)
-    response = _httpClient.getresponse()
-    logging.info((response.status, response.reason))
-    jsonStr =  response.read()
-    logging.info(jsonStr)
-    return response.status == 204
+    return _sendData(url, "", headers, "DELETE", 204)
     
 def addDevice(deviceId, name, description, activateActivity = False):
     '''creates a new device in the IOT platform. The deviceId gets appended with the value  <GatewayId>_
@@ -204,12 +199,7 @@ def deleteDevice(deviceId):
     logging.info("HTTP DELETE: " + url)
     logging.info("HTTP HEADER: " + str(headers))
     logging.info("HTTP BODY: None")
-    _httpClient.request("DELETE", url, "", headers)
-    response = _httpClient.getresponse()
-    logging.info((response.status, response.reason))
-    jsonStr =  response.read()
-    logging.info(jsonStr)
-    return response.status == 204
+    return _sendData(url, "", headers, "DELETE", 204)
 
 def createGateway(name, uid, assets = None):
     'create a new orphan gateway in the cloud'
@@ -342,14 +332,14 @@ def authenticate():
         _RegisteredGateway = False
         return False
 
-def _sendData(url, body, headers, method = 'POST'):
+def _sendData(url, body, headers, method = 'POST', status = 200):
     'Post the data and check the result'
     try:
         _httpClient.request(method, url, body, headers)
         response = _httpClient.getresponse()
         logging.info((response.status, response.reason))
         logging.info(response.read())
-        return response.status == 200
+        return response.status == status
     except:
         try:
             _httpClient.close()
