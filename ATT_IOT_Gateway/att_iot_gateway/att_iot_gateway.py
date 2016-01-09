@@ -287,12 +287,11 @@ def getAssetState(assetId, deviceId):
         logger.info((response.status, response.reason))
         if response.status == 200:
             responseObj = json.loads(response.read())
-            if responseObj and 'state' in responseObj:
-                state = responseObj['state']
-                if state != None:
-                    return state['value']
-                else:
-                    return None
+            if responseObj:
+                return responseObj['value']
+            else:
+                return None
+
         else:
             response.read()                                                     #need to clear the buffers.
     except Exception as e:
