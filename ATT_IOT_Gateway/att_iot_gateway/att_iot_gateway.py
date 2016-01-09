@@ -5,35 +5,38 @@ import calendar                                # for getting the epoch time
 from datetime import datetime                  # for json date time
 import time                                    # gets the current time
 import httplib                                 # for http comm
+from socket import error as SocketError         # for http error handling
+import errno                                    # for http error handling
 import logging
 
 import types as types                          # to check on type info
 import json                                    # in case the data we need to send is complex
 import unicodedata                              # for converting unicode to regular strings
 
+logger = logging.getLogger('att_iot_gateway')
 
 def on_connect(client, userdata, rc):
     'The callback for when the client receives a CONNACK response from the server.'
 
     if rc == 0:
         msg = "Connected to mqtt broker with result code "+str(rc)
-        logging.info(msg)
+        logger.info(msg)
     else:
-        logging.error("Failed to connect to mqtt broker, error: " + mqtt.connack_string(rc))
+        logger.error("Failed to connect to mqtt broker, error: " + mqtt.connack_string(rc))
         return
     
     topic = 'client/' + ClientId + "/in/gateway/" + GatewayId + "/#/command"                                           #subscribe to the topics for the device
     #topic = '#'
-    logging.info("subscribing to: " + topic)
+    logger.info("subscribing to: " + topic)
     result = _mqttClient.subscribe(topic)                                                    #Subscribing in on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
-    logging.info(result)
+    logger.info(result)
 
 
 def on_MQTTmessage(client, userdata, msg):
     'The callback for when a PUBLISH message is received from the server.'
 
     payload = str(msg.payload)
-    logging.info("Incoming message - topic: " + msg.topic + ", payload: " + payload)
+    logger.info("Incoming message - topic: " + msg.topic + ", payload: " + payload)
     topicParts = msg.topic.split("/")
     if on_message is not None:
         try:
@@ -46,12 +49,12 @@ def on_MQTTmessage(client, userdata, msg):
                     assetId = topicParts[6]
                 on_message(devId, assetId, msg.payload)                                 #we want the second last value in the array, the last one is 'command'
             else:
-                logging.error("unknown topic format: " + msg.topic)
+                logger.error("unknown topic format: " + msg.topic)
         except:
-            logging.exception("failed to process actuator command: " + msg.topic + ", payload: " + msg.payload)
+            logger.exception("failed to process actuator command: " + msg.topic + ", payload: " + msg.payload)
 
 def on_MQTTSubscribed(client, userdata, mid, granted_qos):
-    logging.info("Subscribed to topic, receiving data from the cloud: qos=" + str(granted_qos))
+    logger.info("Subscribed to topic, receiving data from the cloud: qos=" + str(granted_qos))
 
 
 #private reference to the mqtt client object for which we reserve a mem loc from the start
@@ -82,7 +85,7 @@ def connect(httpServer="api.smartliving.io"):
     global _httpClient, _httpServerName                                         # we assign to these vars first, so we need to make certain that they are declared as global, otherwise we create new local vars
     _httpClient = httplib.HTTPConnection(httpServer)
     _httpServerName = httpServer
-    logging.info("connected with http server")
+    logger.info("connected with http server")
 
 def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Undefined"):
     '''add an asset to the device. Use the specified name and description.
@@ -107,9 +110,9 @@ def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Un
     headers = _buildHeaders()
     url = "/device/" + deviceId + "/asset/" + str(id)
     
-    logging.info("HTTP PUT: " + url)
-    logging.info("HTTP HEADER: " + str(headers))
-    logging.info("HTTP BODY:" + body)
+    logger.info("HTTP PUT: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY:" + body)
 
     return _sendData(url, body, headers, 'PUT')
 
@@ -131,9 +134,9 @@ def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undef
     headers = _buildHeaders()
     url = "/asset/" + str(id)
     
-    logging.info("HTTP PUT: " + url)
-    logging.info("HTTP HEADER: " + str(headers))
-    logging.info("HTTP BODY:" + body)
+    logger.info("HTTP PUT: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY:" + body)
 
     return _sendData(url, body, headers, 'PUT') 
 
@@ -166,9 +169,9 @@ def addDevice(deviceId, name, description, activateActivity = False):
     headers = _buildHeaders()
     url = "/device/" + deviceId
     
-    logging.info("HTTP PUT: " + url)
-    logging.info("HTTP HEADER: " + str(headers))
-    logging.info("HTTP BODY:" + body)
+    logger.info("HTTP PUT: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY:" + body)
 
     return _sendData(url, body, headers, 'PUT')
 
@@ -182,8 +185,8 @@ def deviceExists(deviceId):
     headers = _buildHeaders()
     url = "/device/" + deviceId
     
-    logging.info("HTTP GET: " + url)
-    logging.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP GET: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
 
     return _sendData(url, "", headers, 'GET')
 
@@ -196,9 +199,9 @@ def deleteDevice(deviceId):
     headers = _buildHeaders()
     url = "/Device/" + deviceId
 
-    logging.info("HTTP DELETE: " + url)
-    logging.info("HTTP HEADER: " + str(headers))
-    logging.info("HTTP BODY: None")
+    logger.info("HTTP DELETE: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY: None")
     return _sendData(url, "", headers, "DELETE", 204)
 
 def createGateway(name, uid, assets = None):
@@ -211,9 +214,9 @@ def createGateway(name, uid, assets = None):
     headers = {"Content-type": "application/json"}
     url = "/gateway"
     
-    logging.info("HTTP POST: " + url)
-    logging.info("HTTP HEADER: " + str(headers))
-    logging.info("HTTP BODY:" + body)
+    logger.info("HTTP POST: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY:" + body)
 
     return _sendData(url, body, headers)
 
@@ -222,17 +225,17 @@ def getGateway(includeDevices = True):
         headers = _buildHeaders()
         url = '/gateway/' + GatewayId + '?includeDevices=' + str(includeDevices)
 
-        logging.info("HTTP GET: " + url)
-        logging.info("HTTP HEADER: " + str(headers))
+        logger.info("HTTP GET: " + url)
+        logger.info("HTTP HEADER: " + str(headers))
         _httpClient.request("GET", url, "", headers)
         response = _httpClient.getresponse()
-        logging.info((response.status, response.reason))
+        logger.info((response.status, response.reason))
         if response.status == 200:
             return json.loads(response.read())
         else:
             response.read()                                                     #need to clear the buffers.
     except:
-        logging.exception("get gateway failed")
+        logger.exception("get gateway failed")
         _httpClient.close()
         connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
     return None
@@ -244,22 +247,22 @@ def finishclaim(name, uid):
     headers = {"Content-type": "application/json"}
     url = "/gateway"
 
-    logging.info("HTTP POST: " + url)
-    logging.info("HTTP HEADER: " + str(headers))
-    logging.info("HTTP BODY:" + body)
+    logger.info("HTTP POST: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY:" + body)
 
     try:
         _httpClient.request('POST', url, body, headers)
         response = _httpClient.getresponse()
     except:
-        logging.exception("finishClaim")
+        logger.exception("finishClaim")
         _httpClient.close()
         connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
         return False
     status = response.status
-    logging.info((status, response.reason))
+    logger.info((status, response.reason))
     response = response.read()
-    logging.info(response)
+    logger.info(response)
     if status == 200:
         _storeCredentials(json.loads(response))
         return True
@@ -276,12 +279,12 @@ def getAssetState(assetId, deviceId):
         headers = _buildHeaders()
         url = "/device/" + deviceId + "/asset/" + str(assetId) + "/state"
     
-        logging.info("HTTP GET: " + url)
-        logging.info("HTTP HEADER: " + str(headers))
+        logger.info("HTTP GET: " + url)
+        logger.info("HTTP HEADER: " + str(headers))
 
         _httpClient.request("GET", url, "", headers)
         response = _httpClient.getresponse()
-        logging.info((response.status, response.reason))
+        logger.info((response.status, response.reason))
         if response.status == 200:
             responseObj = json.loads(response.read())
             if responseObj and 'state' in responseObj:
@@ -293,7 +296,7 @@ def getAssetState(assetId, deviceId):
         else:
             response.read()                                                     #need to clear the buffers.
     except Exception as e:
-        logging.exception("get asset state failed")
+        logger.exception("get asset state failed")
         _httpClient.close()
         connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
     return None                                                                 # if we couldn't find a proper result, return null
@@ -321,8 +324,8 @@ def authenticate():
     headers = _buildHeaders()
     url = "/gateway"
 
-    logging.info("HTTP GET: " + url)
-    logging.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP GET: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
 
     global _RegisteredGateway
     if _sendData(url, "", headers, 'GET'):
@@ -332,21 +335,33 @@ def authenticate():
         _RegisteredGateway = False
         return False
 
-def _sendData(url, body, headers, method = 'POST', status = 200):
-    'Post the data and check the result'
+def _reconnectAfterSendData():
     try:
-        _httpClient.request(method, url, body, headers)
-        response = _httpClient.getresponse()
-        logging.info((response.status, response.reason))
-        logging.info(response.read())
-        return response.status == status
+        _httpClient.close()
+        connect(_httpServerName)                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
     except:
+        logger.exception("reconnect failed after _sendData produced an error")
+
+def _sendData(url, body, headers, method = 'POST', status = 200):
+    """send the data and check the result
+        Some multi threading applications can have issues with the server closing the connection, if this happens
+        we try again
+    """
+    success = False
+    while not success:
         try:
-            _httpClient.close()
-            connect(_httpServerName)                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
+            _httpClient.request(method, url, body, headers)
+            response = _httpClient.getresponse()
+            logger.info((response.status, response.reason))
+            logger.info(response.read())
+            return response.status == status
+        except SocketError as e:
+            _reconnectAfterSendData()
+            if e.errno != errno.ECONNRESET:             # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
+                raise
         except:
-            logging.exception("reconnect after _sendData failed")
-        raise
+            _reconnectAfterSendData()
+            raise
 
 def _buildHeaders():
     return {"Content-type": "application/json", "Auth-GatewayKey": ClientKey, "Auth-GatewayId": GatewayId}
@@ -370,7 +385,7 @@ def subscribe(mqttServer = "broker.smartliving.io", port = 1883):
     _mqttClient.on_message = on_MQTTmessage
     _mqttClient.on_subscribe = on_MQTTSubscribed
     if ClientId is None:
-        logging.error("ClientId not specified, can't connect to broker")
+        logger.error("ClientId not specified, can't connect to broker")
         raise Exception("ClientId not specified, can't connect to broker")
     brokerId = ClientId + ":" + ClientId
     _mqttClient.username_pw_set(brokerId, ClientKey);
@@ -392,10 +407,10 @@ def _buildPayLoad(value):
 def send(value, deviceId, assetId):
     'send the data to the cloud. Data can be a single value or object'
     if ClientId is None:
-        logging.error("ClientId not specifie")
+        logger.error("ClientId not specifie")
         raise Exception("ClientId not specified")
     if assetId is None:
-        logging.error("sensor id not specified")
+        logger.error("sensor id not specified")
         raise Exception("sensorId not specified")
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
@@ -406,5 +421,5 @@ def send(value, deviceId, assetId):
         topic += "/device/" + deviceId + "/asset/" + str(assetId) + "/state"             # also need a topic to publish to
     else:
         topic += "/asset/" + str(assetId) + "/state"
-    logging.info("Publishing message - topic: " + topic + ", payload: " + toSend)
+    logger.info("Publishing message - topic: " + topic + ", payload: " + toSend)
     _mqttClient.publish(topic, toSend, 0, False)
