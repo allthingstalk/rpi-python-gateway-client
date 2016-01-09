@@ -92,9 +92,9 @@ def on_message(device, actuator, value):
     if actuator == "1":
         if value == "true":
             #note: best to store the destination address (long and short) from the incomming packets, so it becomes dynamic
-            zb.send("remote_at", frame="A", command="D4", dest_addr_long = '\x00\x13\xa2\x00@w\x0f\xd2', dest_addr="QH",parameter='\x05')        # should turn on relay
+            zb.send("remote_at", frame="A", command="D4", dest_addr_long = device, dest_addr="QH",parameter='\x05')        # should turn on relay
         else:
-            zb.send("remote_at", frame="A", command="D4", dest_addr_long = '\x00\x13\xa2\x00@w\x0f\xd2', dest_addr="QH",parameter='\x04')        # should turn off relay
+            zb.send("remote_at", frame="A", command="D4", dest_addr_long = device, dest_addr="QH",parameter='\x04')        # should turn off relay
 
 
 devices = []                                           #contains the list of devices already connected to the
