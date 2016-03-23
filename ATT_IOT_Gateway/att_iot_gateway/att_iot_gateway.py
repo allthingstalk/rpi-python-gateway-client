@@ -8,14 +8,14 @@ import httplib                                 # for http comm
 from socket import error as SocketError         # for http error handling
 import errno                                    # for http error handling
 import logging
-
+import socket                                  # for checking if there is support for https
 import types as types                          # to check on type info
 import json                                    # in case the data we need to send is complex
 import unicodedata                              # for converting unicode to regular strings
 
 logger = logging.getLogger('att_iot_gateway')
 
-def on_connect(client, userdata, rc):
+def _on_connect(client, userdata, rc):
     'The callback for when the client receives a CONNACK response from the server.'
 
     if rc == 0:
@@ -28,11 +28,11 @@ def on_connect(client, userdata, rc):
     topic = 'client/' + ClientId + "/in/gateway/" + GatewayId + "/#/command"                                           #subscribe to the topics for the device
     #topic = '#'
     logger.info("subscribing to: " + topic)
-    result = _mqttClient.subscribe(topic)                                                    #Subscribing in on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
+    result = _mqttClient.subscribe(topic)                                                    #Subscribing in _on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
     logger.info(result)
 
 
-def on_MQTTmessage(client, userdata, msg):
+def _on_MQTTmessage(client, userdata, msg):
     'The callback for when a PUBLISH message is received from the server.'
 
     payload = str(msg.payload)
@@ -53,7 +53,7 @@ def on_MQTTmessage(client, userdata, msg):
         except:
             logger.exception("failed to process actuator command: " + msg.topic + ", payload: " + msg.payload)
 
-def on_MQTTSubscribed(client, userdata, mid, granted_qos):
+def _on_MQTTSubscribed(client, userdata, mid, granted_qos):
     logger.info("Subscribed to topic, receiving data from the cloud: qos=" + str(granted_qos))
 
 
@@ -77,21 +77,38 @@ ClientKey = None
 GatewayId = None
 'the id of the gateway that we are using.'
 
-def connect(httpServer="api.smartliving.io"):
-    """connect with the http server
+
+def connect(httpServer="api.smartliving.io", secure=False):
+    """Create a connection with the http server
+    :param httpServer: The dns name of the server to use for HTTP communication
     :type httpServer: basestring
-                      The dns name of the server to use for HTTP communication
+    :param secure: When true, an SSL connection will be used, if available.
     """
     global _httpClient, _httpServerName                                         # we assign to these vars first, so we need to make certain that they are declared as global, otherwise we create new local vars
-    _httpClient = httplib.HTTPConnection(httpServer)
+    if secure and socket.ssl:
+        _httpClient = httplib.HTTPSConnection(httpServer)
+    else:
+        _httpClient = httplib.HTTPConnection(httpServer)
     _httpServerName = httpServer
     logger.info("connected with http server")
 
 def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Undefined"):
     '''add an asset to the device. Use the specified name and description.
-    The asset type can be: string, int, bool, double, dateTime, timeSpan or a json schema to declare the content of data represented as json objects.
+    :param id: The local id of the asset (it's name)
+    :param deviceId: The local id of the device that owns the asset (the name of the device)
+    :param name: A label for the asset.
+    :param description: A desccription.
+    :param isActuator: When true, an actuator will be created, otherwise an asset.
+    :param assetType: The data type of the asset: integer, string, number, boolean, json schema definition
+    :param style: An optional label that you can attach to the asset, which indicates it's function. Currently supported values are:
+        1. Undefined: the asset has no specific style (default)
+	    1. Primary: the asset is considered to represent the primary function of the device.
+	    1. Config: the asset is used to configure the device.
+	    1. Battery: the asset represents a battery value
+	    1. Secondary: the asset represents secondary functionality of the device
     :type style: string
-    :param style: how is the asset displayed in the system. Supported values: 'Undefined', 'Primary', 'Config', 'Battery', 'Secondary'
+    :return: True when succesful (200 ok was returned), otherwise False
+    Can raise exceptions when there were network issues.
     '''
     
     if _RegisteredGateway == False:
@@ -140,7 +157,13 @@ def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undef
 
     return _sendData(url, body, headers, 'PUT') 
 
-def deleteAsset(device, id):    
+def deleteAsset(device, id):
+    """
+    Delete the asset on the cloud with the specified name on the specified device.
+    :param device: the local name of the device.
+    :param id: the local name of the asset
+    :return: True when the operation was successful (returned 204), otherwise False
+    """
     if not device:
         raise Exception("DeviceId not specified")
     headers = _buildHeaders()
@@ -152,15 +175,15 @@ def deleteAsset(device, id):
     return _sendData(url, "", headers, "DELETE", 204)
     
 def addDevice(deviceId, name, description, activateActivity = False):
-    '''creates a new device in the IOT platform. The deviceId gets appended with the value  <GatewayId>_
+    '''creates a new device in the IOT platform.
     if the device already exists, the function will fail
     :rtype : None
-    returns True if the operation was succesful, otherwise False
     :param deviceId:
     :param name:
     :param description:
     :param activateActivity:When true, historical data will be recorded for this device.
     :type activateActivity: bool
+    :return True if the operation was succesful, otherwise False
     '''
     
     if _RegisteredGateway == False:
@@ -177,7 +200,8 @@ def addDevice(deviceId, name, description, activateActivity = False):
 
 def deviceExists(deviceId):
     '''checks if the device already exists in the IOT platform.
-    returns True when it already exists, otherwise False'''
+    :param deviceId: the local name of the device.
+    :return True when it already exists, otherwise False'''
     
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
@@ -194,7 +218,8 @@ def deviceExists(deviceId):
 def deleteDevice(deviceId):
     '''
         Deletes the specified device from the cloud.
-        returns true when successful.
+        :param deviceId: the local name of the device.
+        :return true when successful.
     '''
     headers = _buildHeaders()
     url = "/Device/" + deviceId
@@ -205,7 +230,14 @@ def deleteDevice(deviceId):
     return _sendData(url, "", headers, "DELETE", 204)
 
 def createGateway(name, uid, assets = None):
-    'create a new orphan gateway in the cloud'
+    """Create a new orphan gateway in the cloud. After the gateway has been created, the user should claim it from within the website so that the gateway is assigned to the correct user account.  To finish the claim procedure, the gateway application should call 'finishclaim' after creating the gateway in the cloud.
+When the gateway has ben succesfully created, use 'authenticate' to verify that the gateway still exists in the cloud whenever the gateway restarts.
+    :param name: the name ofhte gateway.
+    :param uid: a globally unique id for gateways (ex: mac address)
+    :param assets: a json structure with all the assets that should be created for the gateway. Default is None
+    See the [api documentation](http://docs-dev.smartliving.io/reference/devices/#-create-or-update-asset-) for more info.
+    :return: True when succesfull.
+    """
     
     if assets == None:
         body = '{"uid":"' + uid + '","name":"' + name + '", "assets":[] }'
@@ -271,7 +303,7 @@ def finishclaim(name, uid):
 
 def getAssetState(assetId, deviceId):
     '''look up the current state value for the asset with the specified local id, on the specified device (local id)  
-    if not found, returns None'''
+    :return json object. If not found, returns None'''
     
     try:
         if _RegisteredGateway == False:
@@ -315,7 +347,7 @@ def _storeCredentials(gateway):
 
 def authenticate():
     '''validate that the currently stored credentials are ok.
-    return true if succesful, otherwise false'''
+        :return True if succesful, otherwise False'''
    
     headers = _buildHeaders()
     url = "/gateway"
@@ -363,11 +395,18 @@ def _buildHeaders():
     return {"Content-type": "application/json", "Auth-GatewayKey": ClientKey, "Auth-GatewayId": GatewayId}
 
 
-def subscribe(mqttServer = "broker.smartliving.io", port = 1883):
+def subscribe(mqttServer = "broker.smartliving.io", port = 1883, secure = False, certFile = 'cacert.pem'):
     '''start the mqtt client and make certain that it can receive data from the IOT platform
-    mqttServer: (optional): the address of the mqtt server. Only supply this value if you want to a none standard server.
-    port: (optional) the port number to communicate on with the mqtt server.'''
-
+	   :param mqttServer:  the address of the mqtt server. Only supply this value if you want to a none standard server. Default = broker.smartliving.io
+	   :param port: the port number to communicate on with the mqtt server. Default = 1883
+	   :param secure: When true, an SSL connection is used. Default = False.  When True, use port 8883 on broker.smartliving.io
+	   :param certFile: certfile is a string pointing to the PEM encoded client
+        certificate and private keys respectively. Note
+        that if either of these files in encrypted and needs a password to
+        decrypt it, Python will ask for the password at the command line. It is
+        not currently possible to define a callback to provide the password.
+	   Note: SSL will can only be used when the mqtt lib has been compiled with support for ssl
+    '''
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
 
@@ -377,15 +416,16 @@ def subscribe(mqttServer = "broker.smartliving.io", port = 1883):
     else:
         mqttId = GatewayId
     _mqttClient = mqtt.Client(mqttId)
-    _mqttClient.on_connect = on_connect
-    _mqttClient.on_message = on_MQTTmessage
-    _mqttClient.on_subscribe = on_MQTTSubscribed
+    _mqttClient.on_connect = _on_connect
+    _mqttClient.on_message = _on_MQTTmessage
+    _mqttClient.on_subscribe = _on_MQTTSubscribed
     if ClientId is None:
         logger.error("ClientId not specified, can't connect to broker")
         raise Exception("ClientId not specified, can't connect to broker")
     brokerId = ClientId + ":" + ClientId
     _mqttClient.username_pw_set(brokerId, ClientKey);
-    
+    if secure and socket.ssl:
+        _mqttClient.tls_set(certFile)
     _mqttClient.connect(mqttServer, port, 60)
     _mqttClient.loop_start()
 
@@ -401,7 +441,12 @@ def _buildPayLoad(value):
 
 
 def send(value, deviceId, assetId):
-    'send the data to the cloud. Data can be a single value or object'
+    """send the data to the cloud. Data can be a single value or object
+    :param value: the value to send in the form of a string. So a boolean is sent as 'true' or 'false', an integer can be sent as '1' and a fload as '1.1'.  You can also send an object or a python list with this function to the cloud. Objects will be converted to json objects, lists become json arrays. The fields/records in the json objects or arrays must be the same as defined in the profile.
+    :type value: string or json object
+    :param deviceId: The local name of the device
+    :param assetId: the local name of the asset
+    """
     if ClientId is None:
         logger.error("ClientId not specifie")
         raise Exception("ClientId not specified")
