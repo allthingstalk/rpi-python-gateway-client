@@ -60,6 +60,7 @@ def _on_MQTTSubscribed(client, userdata, mid, granted_qos):
 #private reference to the mqtt client object for which we reserve a mem loc from the start
 _mqttClient = None
 _httpServerName = None
+_secureHTTP = False
 _httpClient = None
 
 # gateway specific stuff
@@ -84,10 +85,12 @@ def connect(httpServer="api.smartliving.io", secure=False):
     :type httpServer: basestring
     :param secure: When true, an SSL connection will be used, if available.
     """
-    global _httpClient, _httpServerName                                         # we assign to these vars first, so we need to make certain that they are declared as global, otherwise we create new local vars
+    global _httpClient, _httpServerName, _secureHTTP                                         # we assign to these vars first, so we need to make certain that they are declared as global, otherwise we create new local vars
     if secure and socket.ssl:
+        _secureHTTP = True
         _httpClient = httplib.HTTPSConnection(httpServer)
     else:
+        _secureHTTP = False
         _httpClient = httplib.HTTPConnection(httpServer)
     _httpServerName = httpServer
     logger.info("connected with http server")
@@ -268,8 +271,7 @@ def getGateway(includeDevices = True):
             response.read()                                                     #need to clear the buffers.
     except:
         logger.exception("get gateway failed")
-        _httpClient.close()
-        connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
+        _reconnectAfter("getGateway")
     return None
 
 def finishclaim(name, uid):
@@ -288,8 +290,7 @@ def finishclaim(name, uid):
         response = _httpClient.getresponse()
     except:
         logger.exception("finishClaim")
-        _httpClient.close()
-        connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
+        _reconnectAfter('finishClaim')                                             # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
         return False
     status = response.status
     logger.info((status, response.reason))
@@ -325,8 +326,7 @@ def getAssetState(assetId, deviceId):
             response.read()                                                     #need to clear the buffers.
     except Exception as e:
         logger.exception("get asset state failed")
-        _httpClient.close()
-        connect(_httpServerName)                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
+        _reconnectAfter('getAssetState')                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
     return None                                                                 # if we couldn't find a proper result, return null
 
 def _buildPayLoadHTTP(value):
@@ -363,12 +363,12 @@ def authenticate():
         _RegisteredGateway = False
         return False
 
-def _reconnectAfterSendData():
+def _reconnectAfter(caller):
     try:
         _httpClient.close()
-        connect(_httpServerName)                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
+        connect(_httpServerName, _secureHTTP)                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
     except:
-        logger.exception("reconnect failed after _sendData produced an error")
+        logger.exception("reconnect failed after " + caller + " produced an error")
 
 def _sendData(url, body, headers, method = 'POST', status = 200):
     """send the data and check the result
@@ -384,11 +384,11 @@ def _sendData(url, body, headers, method = 'POST', status = 200):
             logger.info(response.read())
             return response.status == status
         except SocketError as e:
-            _reconnectAfterSendData()
+            _reconnectAfter("_sendData")
             if e.errno != errno.ECONNRESET:             # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
                 raise
         except:
-            _reconnectAfterSendData()
+            _reconnectAfter("_sendData")
             raise
 
 def _buildHeaders():
