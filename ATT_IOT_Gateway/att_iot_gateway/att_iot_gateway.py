@@ -97,7 +97,8 @@ def connect(httpServer="api.smartliving.io", secure=False):
 
 def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Undefined"):
     '''add an asset to the device. Use the specified name and description.
-    :param id: The local id of the asset (it's name)
+    :param id: <type>string</type> The local id of the asset (it's name)
+    :type id: basestring
     :param deviceId: The local id of the device that owns the asset (the name of the device)
     :param name: A label for the asset.
     :param description: A desccription.
@@ -181,10 +182,10 @@ def addDevice(deviceId, name, description, activateActivity = False):
     '''creates a new device in the IOT platform.
     if the device already exists, the function will fail
     :rtype : None
-    :param deviceId:
-    :param name:
-    :param description:
-    :param activateActivity:When true, historical data will be recorded for this device.
+    :param deviceId: The local identifier of the device
+    :param name: the name of the device
+    :param description: a description
+    :param activateActivity: When true, historical data will be recorded for this device.
     :type activateActivity: bool
     :return True if the operation was succesful, otherwise False
     '''
