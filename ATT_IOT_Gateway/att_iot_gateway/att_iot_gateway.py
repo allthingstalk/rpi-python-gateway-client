@@ -449,7 +449,7 @@ def send(value, deviceId, assetId):
     :param assetId: the local name of the asset
     """
     if ClientId is None:
-        logger.error("ClientId not specifie")
+        logger.error("ClientId not specified")
         raise Exception("ClientId not specified")
     if assetId is None:
         logger.error("sensor id not specified")
@@ -463,5 +463,37 @@ def send(value, deviceId, assetId):
         topic += "/device/" + deviceId + "/asset/" + str(assetId) + "/state"             # also need a topic to publish to
     else:
         topic += "/asset/" + str(assetId) + "/state"
+    logger.info("Publishing message - topic: " + topic + ", payload: " + toSend)
+    _mqttClient.publish(topic, toSend, 0, False)
+
+
+def sendCommand(value, gatewayId, deviceId, assetId):
+    """send the data to the cloud. Data can be a single value or object
+    :param value: the value to send in the form of a string. So a boolean is sent as 'true' or 'false', an integer can be sent as '1' and a fload as '1.1'.  You can also send an object or a python list with this function to the cloud. Objects will be converted to json objects, lists become json arrays. The fields/records in the json objects or arrays must be the same as defined in the profile.
+    :type value: string or json object
+    :param deviceId: The local name of the device
+    :param assetId: the local name of the asset
+    """
+    if ClientId is None:
+        logger.error("ClientId not specified")
+        raise Exception("ClientId not specified")
+    if assetId is None:
+        logger.error("sensor id not specified")
+        raise Exception("sensorId not specified")
+    if _RegisteredGateway == False:
+        raise Exception('gateway must be registered')
+
+    typeOfVal = type(value)
+    if typeOfVal in [types.IntType, types.BooleanType, types.FloatType, types.LongType, types.StringType]:  # if it's a basic type: send as csv, otherwise as json.
+        toSend = str(value)
+    else:
+        toSend = json.dumps(value)
+    topic = "client/" + ClientId + "/in/"
+    if gatewayId:
+        topic += "gateway/" + gatewayId
+    if deviceId != None:
+        topic += "/device/" + deviceId + "/asset/" + str(assetId) + "/command"             # also need a topic to publish to
+    else:
+        topic += "/asset/" + str(assetId) + "/command"
     logger.info("Publishing message - topic: " + topic + ", payload: " + toSend)
     _mqttClient.publish(topic, toSend, 0, False)
