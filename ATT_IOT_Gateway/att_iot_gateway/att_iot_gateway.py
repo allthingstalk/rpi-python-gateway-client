@@ -177,6 +177,21 @@ def deleteAsset(device, id):
     print("HTTP HEADER: " + str(headers))
     print("HTTP BODY: None")
     return _sendData(url, "", headers, "DELETE", 204)
+
+def deleteGatewayAsset(id):
+    """
+    Delete the asset on the cloud with the specified name on the specified device.
+    :param device: the local name of the device.
+    :param id: the local name of the asset
+    :return: True when the operation was successful (returned 204), otherwise False
+    """
+    headers = _buildHeaders()
+    url = "/device/" + str(id)
+
+    print("HTTP DELETE: " + url)
+    print("HTTP HEADER: " + str(headers))
+    print("HTTP BODY: None")
+    return _sendData(url, "", headers, "DELETE", 204)
     
 def addDevice(deviceId, name, description, activateActivity = False):
     '''creates a new device in the IOT platform.
