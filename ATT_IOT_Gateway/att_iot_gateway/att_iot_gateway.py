@@ -30,6 +30,8 @@ def _on_connect(client, userdata, rc):
     logger.info("subscribing to: " + topic)
     result = _mqttClient.subscribe(topic)                                                    #Subscribing in _on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
     logger.info(result)
+    if on_connected:
+        on_connected()
 
 
 def _on_MQTTmessage(client, userdata, msg):
@@ -79,16 +81,26 @@ GatewayId = None
 'the id of the gateway that we are using.'
 
 
-def connect(httpServer="api.smartliving.io", secure=False):
+#optionally provided by the module consumer
+on_connected = None
+'callback that will be signalled once the broker is connected. This can be used to block' \
+'the application untill a connection with the broker has been made, so that no data gets lost'
+
+
+def connect(httpServer="api.smartliving.io", secure=False, certFile = 'cacert.pem'):
     """Create a connection with the http server
     :param httpServer: The dns name of the server to use for HTTP communication
     :type httpServer: basestring
     :param secure: When true, an SSL connection will be used, if available.
     """
     global _httpClient, _httpServerName, _secureHTTP                                         # we assign to these vars first, so we need to make certain that they are declared as global, otherwise we create new local vars
-    if secure and socket.ssl:
+    if secure == True and hasattr(socket, "ssl") == True:
+        logging.info("is secure {}, ssl: {}".format(secure, hasattr(socket, "ssl")))
         _secureHTTP = True
-        _httpClient = httplib.HTTPSConnection(httpServer)
+        if certFile:
+            _httpClient = httplib.HTTPSConnection(httpServer, cert_file = certFile)
+        else:
+            _httpClient = httplib.HTTPSConnection(httpServer)
     else:
         _secureHTTP = False
         _httpClient = httplib.HTTPConnection(httpServer)
@@ -209,13 +221,40 @@ def addDevice(deviceId, name, description, activateActivity = False):
         raise Exception('gateway must be registered')
     body = '{"title":"' + name + '","description":"' + description + '", "type": "custom", "activityEnabled": ' + str(activateActivity).lower() + '}'
     headers = _buildHeaders()
-    url = "/device/" + deviceId
+    url = "/device/" + str(deviceId)                                    # make certain that the deviceId is a string.
     
     logger.info("HTTP PUT: " + url)
     logger.info("HTTP HEADER: " + str(headers))
     logger.info("HTTP BODY:" + body)
 
     return _sendData(url, body, headers, 'PUT')
+
+
+def addDeviceFromTemplate(deviceId, templateId, values):
+    """add a device to the cloud by using a predefined template that is stored in the cloud
+    :type deviceId: string or int
+    :param deviceId:
+    :param templateId: the id of the template that should be used
+    :type templateId: basestring
+    :param values: any optional values that have to be replaced in the template. This is specified as a
+                    dictionary with key-value pairs.
+    :type values: dictionary (json object)
+    :return: the definition of the device that was created (json/dictionary) or None if the template was not found
+    """
+    if _RegisteredGateway == False:
+        raise Exception('gateway must be registered')
+    if values:
+        body = '{"type":"' + templateId + '", "data": ' + json.dumps(values) + '}'
+    else:
+        body = '{"type":"' + templateId + '" }'
+    headers = _buildHeaders()
+    url = "/device/" + deviceId
+
+    logger.info("HTTP PUT: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY:" + body)
+
+    return _getData(url, body, headers, 'PUT')
 
 def deviceExists(deviceId):
     '''checks if the device already exists in the IOT platform.
@@ -272,23 +311,12 @@ When the gateway has ben succesfully created, use 'authenticate' to verify that 
     return _sendData(url, body, headers)
 
 def getGateway(includeDevices = True):
-    try:
-        headers = _buildHeaders()
-        url = '/gateway/' + GatewayId + '?includeDevices=' + str(includeDevices)
+    headers = _buildHeaders()
+    url = '/gateway/' + GatewayId + '?includeDevices=' + str(includeDevices)
 
-        logger.info("HTTP GET: " + url)
-        logger.info("HTTP HEADER: " + str(headers))
-        _httpClient.request("GET", url, "", headers)
-        response = _httpClient.getresponse()
-        logger.info((response.status, response.reason))
-        if response.status == 200:
-            return json.loads(response.read())
-        else:
-            response.read()                                                     #need to clear the buffers.
-    except:
-        logger.exception("get gateway failed")
-        _reconnectAfter("getGateway")
-    return None
+    logger.info("HTTP GET: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    return _getData(url, "", headers)
 
 def finishclaim(name, uid):
     '''finish the claiming process for a previously created gateway.  When done, the system will store the credentials
@@ -321,29 +349,16 @@ def finishclaim(name, uid):
 def getAssetState(assetId, deviceId):
     '''look up the current state value for the asset with the specified local id, on the specified device (local id)  
     :return json object. If not found, returns None'''
-    
-    try:
-        if _RegisteredGateway == False:
-            raise Exception('gateway must be registered')
-        headers = _buildHeaders()
-        url = "/device/" + deviceId + "/asset/" + str(assetId) + "/state"
-    
-        logger.info("HTTP GET: " + url)
-        logger.info("HTTP HEADER: " + str(headers))
 
-        _httpClient.request("GET", url, "", headers)
-        response = _httpClient.getresponse()
-        logger.info((response.status, response.reason))
-        if response.status == 200:
-            responseObj = json.loads(response.read())
-            if responseObj:
-                return responseObj
-        else:
-            response.read()                                                     #need to clear the buffers.
-    except Exception as e:
-        logger.exception("get asset state failed")
-        _reconnectAfter('getAssetState')                                                # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
-    return None                                                                 # if we couldn't find a proper result, return null
+    if _RegisteredGateway == False:
+        raise Exception('gateway must be registered')
+    headers = _buildHeaders()
+    url = "/device/" + deviceId + "/asset/" + str(assetId) + "/state"
+
+    logger.info("HTTP GET: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+
+    return _getData(url, "", headers)
 
 def _buildPayLoadHTTP(value):
     data = {"value": value, "at": datetime.utcnow().isoformat()}
@@ -405,6 +420,29 @@ def _sendData(url, body, headers, method = 'POST', status = 200):
                 raise
         except:
             _reconnectAfter("_sendData")
+            raise
+
+def _getData(url, body, headers, method = 'GET', status = 200):
+    """send a request to the server and return the response"""
+    success = False
+    while not success:
+        try:
+            _httpClient.request(method, url, body, headers)
+            response = _httpClient.getresponse()
+            logger.info((response.status, response.reason))
+            result = response.read()
+            logger.info(result)
+            if response.status == status:
+                return json.loads(result)
+            else:
+                response.read()  # need to clear the buffers.
+                return None
+        except SocketError as e:
+            _reconnectAfter("_getData")
+            if e.errno != errno.ECONNRESET:  # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
+                raise
+        except:
+            _reconnectAfter("_getData")
             raise
 
 def _buildHeaders():
