@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: att-iot-gateway
-Version: 0.2.1
+Version: 0.2.3
 Summary: This package provides device & asset management + data feed features for the AllThingsTalk platform to your application.
 Home-page: https://github.com/allthingstalk/rpi-python-gateway-client
 Author: Jan Bogaerts

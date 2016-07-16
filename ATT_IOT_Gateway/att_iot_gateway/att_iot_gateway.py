@@ -401,6 +401,9 @@ def _buildPayLoad(value):
         data = {  "value": value, "at": datetime.utcnow().isoformat() + 'Z' }       # the +Z is a small hack cause utcnow doesn't include timezone info. Since we want utc time, we can add the value 'z' to indicate this.
         return json.dumps(data)
 
+def _buildPayLoadHTTP(value):
+    data = {"value": value, "at": datetime.utcnow().isoformat() + 'Z'}
+    return json.dumps(data)
 
 
 def send(value, deviceId, assetId):
@@ -422,3 +425,25 @@ def send(value, deviceId, assetId):
         topic += "/asset/" + str(assetId) + "/state"
     logger.info("Publishing message - topic: " + topic + ", payload: " + toSend)
     _mqttClient.publish(topic, toSend, 0, False)
+	
+	
+def sendValueHTTP(value, deviceId, assetId):
+    '''Sends a new value for an asset over http. This function is similar to send, accept that the latter uses mqtt
+       while this function uses HTTP
+
+       Parameters are the same as for the send function.
+       '''
+    if _RegisteredGateway == False:
+        raise Exception('gateway must be registered')
+
+    body = _buildPayLoadHTTP(value)
+    headers = _buildHeaders()
+    url = "/device/" + deviceId + "/asset/" + str(assetId) + "/state"
+    
+    logger.info("HTTP PUT: " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY:" + body)
+
+    return _sendData(url, body, headers, 'PUT')   
+	   
+    
