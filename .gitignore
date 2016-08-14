@@ -9,3 +9,4 @@ att_iot_gateway/pwd for pip.txt
 generic_demo/.idea/
 generic_demo/gateway.config
 generic_demo/att_iot_gateway.py
+att_iot_gateway/pypirc/.pypirc
