@@ -24,7 +24,7 @@ def _on_connect(client, userdata, rc):
     else:
         logger.error("Failed to connect to mqtt broker, error: " + mqtt.connack_string(rc))
         return
-    
+
     topic = 'client/' + ClientId + "/in/gateway/" + GatewayId + "/#/command"                                           #subscribe to the topics for the device
     #topic = '#'
     logger.info("subscribing to: " + topic)
@@ -107,15 +107,15 @@ def connect(httpServer="api.smartliving.io", secure=False, certFile = None):
     _httpServerName = httpServer
     logger.info("connected with http server")
 
-def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Undefined"):
+def addAsset(id, deviceId, name, description, type, profile, style = "Undefined"):
     '''add an asset to the device. Use the specified name and description.
     :param id: <type>string</type> The local id of the asset (it's name)
     :type id: basestring
     :param deviceId: The local id of the device that owns the asset (the name of the device)
     :param name: A label for the asset.
     :param description: A desccription.
-    :param isActuator: When true, an actuator will be created, otherwise an asset.
-    :param assetType: The data type of the asset: integer, string, number, boolean, json schema definition
+    :param type: type of asset: sensor, actuator, config, virtual
+    :param profile: The data type of the asset: integer, string, number, boolean, json schema definition
     :param style: An optional label that you can attach to the asset, which indicates it's function. Currently supported values are:
         1. Undefined: the asset has no specific style (default)
 	    1. Primary: the asset is considered to represent the primary function of the device.
@@ -126,23 +126,32 @@ def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Un
     :return: True when succesful (200 ok was returned), otherwise False
     Can raise exceptions when there were network issues.
     '''
-    
+
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
 
-    body = '{"title":"' + name + '","description":"' + description + '", "style": "' + style + '","is":"'
-    if isActuator:
-        body = body + 'actuator'
-    else:
-        body = body + 'sensor'
+    def getProfile():
+        """
+        :return: the profile as it can be used in a dict object.
+        """
+        if isinstance(profile, dict):
+            return profile
+        elif isinstance(profile, basestring):
+            if profile[0] == '{':      # if the asset type is complex (starts with {', then render the body a little different
+                return json.loads(profile)
+            else:
+                return {"type": profile}
 
-    if assetType[0] == '{':                 # if the asset type is complex (starts with {', then render the body a little different
-        body = body + '","profile":' + assetType + '}'
-    else:
-        body = body + '","profile": {"type":"' + assetType + '" }}'
+    body = {"title": name,
+            'description': description,
+            'style': style,
+            'is':type,
+            'profile': getProfile()}
+    body = json.dumps(body)
+
     headers = _buildHeaders()
     url = "/device/" + deviceId + "/asset/" + str(id)
-    
+
     logger.info("HTTP PUT: " + url)
     logger.info("HTTP HEADER: " + str(headers))
     logger.info("HTTP BODY:" + body)
@@ -166,12 +175,12 @@ def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undef
         body = body + '","profile": {"type":"' + assetType + '" }}'
     headers = _buildHeaders()
     url = "/asset/" + str(id)
-    
+
     logger.info("HTTP PUT: " + url)
     logger.info("HTTP HEADER: " + str(headers))
     logger.info("HTTP BODY:" + body)
 
-    return _sendData(url, body, headers, 'PUT') 
+    return _sendData(url, body, headers, 'PUT')
 
 def deleteAsset(device, id):
     """
@@ -183,7 +192,7 @@ def deleteAsset(device, id):
     if not device:
         raise Exception("DeviceId not specified")
     headers = _buildHeaders()
-    url = "/device/" + device  + "/" + str(id)
+    url = "/device/" + device  + "/asset/" + str(id)
 
     print("HTTP DELETE: " + url)
     print("HTTP HEADER: " + str(headers))
@@ -204,7 +213,7 @@ def deleteGatewayAsset(id):
     print("HTTP HEADER: " + str(headers))
     print("HTTP BODY: None")
     return _sendData(url, "", headers, "DELETE", 204)
-    
+
 def addDevice(deviceId, name, description, activateActivity = False):
     '''creates a new device in the IOT platform.
     if the device already exists, the function will fail
@@ -216,13 +225,13 @@ def addDevice(deviceId, name, description, activateActivity = False):
     :type activateActivity: bool
     :return True if the operation was succesful, otherwise False
     '''
-    
+
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
     body = '{"title":"' + name + '","description":"' + description + '", "type": "custom", "activityEnabled": ' + str(activateActivity).lower() + '}'
     headers = _buildHeaders()
     url = "/device/" + str(deviceId)                                    # make certain that the deviceId is a string.
-    
+
     logger.info("HTTP PUT: " + url)
     logger.info("HTTP HEADER: " + str(headers))
     logger.info("HTTP BODY:" + body)
@@ -260,13 +269,13 @@ def deviceExists(deviceId):
     '''checks if the device already exists in the IOT platform.
     :param deviceId: the local name of the device.
     :return True when it already exists, otherwise False'''
-    
+
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
-    
+
     headers = _buildHeaders()
     url = "/device/" + deviceId
-    
+
     logger.info("HTTP GET: " + url)
     logger.info("HTTP HEADER: " + str(headers))
 
@@ -296,14 +305,14 @@ When the gateway has ben succesfully created, use 'authenticate' to verify that 
     See the [api documentation](http://docs-dev.smartliving.io/reference/devices/#-create-or-update-asset-) for more info.
     :return: True when succesfull.
     """
-    
+
     if assets == None:
         body = '{"uid":"' + uid + '","name":"' + name + '", "assets":[] }'
     else:
         body = '{"uid":"' + uid + '","name":"' + name + '", "assets":' + json.dumps(assets) + ' }'
     headers = {"Content-type": "application/json"}
     url = "/gateway"
-    
+
     logger.info("HTTP POST: " + url)
     logger.info("HTTP HEADER: " + str(headers))
     logger.info("HTTP BODY:" + body)
@@ -347,7 +356,7 @@ def finishclaim(name, uid):
         return False
 
 def getAssetState(assetId, deviceId):
-    '''look up the current state value for the asset with the specified local id, on the specified device (local id)  
+    '''look up the current state value for the asset with the specified local id, on the specified device (local id)
     :return json object. If not found, returns None'''
 
     if _RegisteredGateway == False:
@@ -379,7 +388,7 @@ def _storeCredentials(gateway):
 def authenticate():
     '''validate that the currently stored credentials are ok.
         :return True if succesful, otherwise False'''
-   
+
     headers = _buildHeaders()
     url = "/gateway"
 
@@ -407,6 +416,7 @@ def _sendData(url, body, headers, method = 'POST', status = 200):
         we try again
     """
     success = False
+    badStatusLineCount = 0  # keep track of the amount of 'badStatusLine' exceptions we received. If too many raise to caller, otherwise retry.
     while not success:
         try:
             _httpClient.request(method, url, body, headers)
@@ -414,6 +424,12 @@ def _sendData(url, body, headers, method = 'POST', status = 200):
             logger.info((response.status, response.reason))
             logger.info(response.read())
             return response.status == status
+        except httplib.BadStatusLine:  # a bad status line is probably due to the connection being closed. If it persists, raise the exception.
+            badStatusLineCount += 1
+            if badStatusLineCount < 10:
+                _reconnectAfter("_sendData")
+            else:
+                raise
         except SocketError as e:
             _reconnectAfter("_sendData")
             if e.errno != errno.ECONNRESET:             # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
@@ -425,6 +441,7 @@ def _sendData(url, body, headers, method = 'POST', status = 200):
 def _getData(url, body, headers, method = 'GET', status = 200):
     """send a request to the server and return the response"""
     success = False
+    badStatusLineCount = 0  # keep track of the amount of 'badStatusLine' exceptions we received. If too many raise to caller, otherwise retry.
     while not success:
         try:
             _httpClient.request(method, url, body, headers)
@@ -433,10 +450,18 @@ def _getData(url, body, headers, method = 'GET', status = 200):
             result = response.read()
             logger.info(result)
             if response.status == status:
-                return json.loads(result)
+                if result:
+                    return json.loads(result)
+                else:
+                    return None
             else:
-                response.read()  # need to clear the buffers.
                 return None
+        except httplib.BadStatusLine:  # a bad status line is probably due to the connection being closed. If it persists, raise the exception.
+            badStatusLineCount += 1
+            if badStatusLineCount < 10:
+                _reconnectAfter("_sendData")
+            else:
+                raise
         except SocketError as e:
             _reconnectAfter("_getData")
             if e.errno != errno.ECONNRESET:  # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
@@ -550,8 +575,8 @@ def sendCommand(value, gatewayId, deviceId, assetId):
         topic += "/asset/" + str(assetId) + "/command"
     logger.info("Publishing message - topic: " + topic + ", payload: " + toSend)
     _mqttClient.publish(topic, toSend, 0, False)
-	
-	
+
+
 def sendValueHTTP(value, deviceId, assetId):
     '''Sends a new value for an asset over http. This function is similar to send, accept that the latter uses mqtt
        while this function uses HTTP
@@ -564,9 +589,9 @@ def sendValueHTTP(value, deviceId, assetId):
     body = _buildPayLoadHTTP(value)
     headers = _buildHeaders()
     url = "/device/" + deviceId + "/asset/" + str(assetId) + "/state"
-    
+
     logger.info("HTTP PUT: " + url)
     logger.info("HTTP HEADER: " + str(headers))
     logger.info("HTTP BODY:" + body)
 
-    return _sendData(url, body, headers, 'PUT')  	
+    return _sendData(url, body, headers, 'PUT')
