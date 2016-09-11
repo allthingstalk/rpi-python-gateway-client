@@ -101,7 +101,7 @@ _parameters:_
 returns _True_ if the device was deleted, otherwise _False_.
 
 ```python
-def addAsset(id, deviceId, name, description, isActuator, assetType, style = "Undefined")
+def addAsset(id, deviceId, name, description, type, profile, style = "Undefined")
 ```
 
 create or update the specified asset. 
@@ -112,8 +112,8 @@ _parameters:_
 2. deviceId: (string) the id of the device that should be created. This should be a unique value within the context of the gateway. 
 3. name: (string) the name that the asset should have. This is a free form string.
 4. description: (string) a possible description of the asset.
-5. isActuator: (bool) _True_ if it is possible to send values from the IOT platform to the asset. Use _False_ if it can only measure values and send them to the cloud. Note: actuators can also send values from the device to the IOT platform.
-6. type: (string) The value type that the asset works with. Possible values can be: 'integer', 'double', 'boolean', 'dateTime', 'timeStamp', 'string'. Optionally, you can also specify the full [profile](http://docs-dev.smartliving.io/about/profiles/) type.
+5. type: (string) Possible values: sensor, actuator, virtual, config.
+6. profile: (string or dict) The data type that the asset works with. See here for more info: [profile](http://docs-dev.smartliving.io/about/profiles/).
 7. style: (string) An optional label that you can attach to the asset, which indicates it's function. Currently supported values are:
 	1. Undefined: the asset has no specific style (default)
 	2. Primary: the asset is considered to represent the primary function of the device.
