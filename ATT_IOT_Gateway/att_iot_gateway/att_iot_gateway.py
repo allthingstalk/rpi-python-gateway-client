@@ -5,6 +5,7 @@ import calendar                                # for getting the epoch time
 from datetime import datetime                  # for json date time
 import time                                    # gets the current time
 import httplib                                 # for http comm
+import urllib                                   # for cleaning up urls (strings and stuff)
 from socket import error as SocketError         # for http error handling
 import errno                                    # for http error handling
 import logging
@@ -151,11 +152,6 @@ def addAsset(id, deviceId, name, description, type, profile, style = "Undefined"
 
     headers = _buildHeaders()
     url = "/device/" + deviceId + "/asset/" + str(id)
-
-    logger.info("HTTP PUT: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-    logger.info("HTTP BODY:" + body)
-
     return _sendData(url, body, headers, 'PUT')
 
 def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undefined"):
@@ -176,10 +172,6 @@ def addGatewayAsset(id, name, description, isActuator, assetType, style = "Undef
     headers = _buildHeaders()
     url = "/asset/" + str(id)
 
-    logger.info("HTTP PUT: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-    logger.info("HTTP BODY:" + body)
-
     return _sendData(url, body, headers, 'PUT')
 
 def deleteAsset(device, id):
@@ -194,9 +186,6 @@ def deleteAsset(device, id):
     headers = _buildHeaders()
     url = "/device/" + device  + "/asset/" + str(id)
 
-    print("HTTP DELETE: " + url)
-    print("HTTP HEADER: " + str(headers))
-    print("HTTP BODY: None")
     return _sendData(url, "", headers, "DELETE", 204)
 
 def deleteGatewayAsset(id):
@@ -209,9 +198,6 @@ def deleteGatewayAsset(id):
     headers = _buildHeaders()
     url = "/device/" + str(id)
 
-    print("HTTP DELETE: " + url)
-    print("HTTP HEADER: " + str(headers))
-    print("HTTP BODY: None")
     return _sendData(url, "", headers, "DELETE", 204)
 
 def addDevice(deviceId, name, description, activateActivity = False):
@@ -231,10 +217,6 @@ def addDevice(deviceId, name, description, activateActivity = False):
     body = '{"title":"' + name + '","description":"' + description + '", "type": "custom", "activityEnabled": ' + str(activateActivity).lower() + '}'
     headers = _buildHeaders()
     url = "/device/" + str(deviceId)                                    # make certain that the deviceId is a string.
-
-    logger.info("HTTP PUT: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-    logger.info("HTTP BODY:" + body)
 
     return _sendData(url, body, headers, 'PUT')
 
@@ -259,10 +241,6 @@ def addDeviceFromTemplate(deviceId, templateId, values):
     headers = _buildHeaders()
     url = "/device/" + deviceId
 
-    logger.info("HTTP PUT: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-    logger.info("HTTP BODY:" + body)
-
     return _getData(url, body, headers, 'PUT')
 
 def deviceExists(deviceId):
@@ -276,9 +254,6 @@ def deviceExists(deviceId):
     headers = _buildHeaders()
     url = "/device/" + deviceId
 
-    logger.info("HTTP GET: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-
     return _sendData(url, "", headers, 'GET')
 
 
@@ -291,9 +266,6 @@ def deleteDevice(deviceId):
     headers = _buildHeaders()
     url = "/Device/" + deviceId
 
-    logger.info("HTTP DELETE: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-    logger.info("HTTP BODY: None")
     return _sendData(url, "", headers, "DELETE", 204)
 
 def createGateway(name, uid, assets = None):
@@ -312,19 +284,12 @@ When the gateway has ben succesfully created, use 'authenticate' to verify that 
         body = '{"uid":"' + uid + '","name":"' + name + '", "assets":' + json.dumps(assets) + ' }'
     headers = {"Content-type": "application/json"}
     url = "/gateway"
-
-    logger.info("HTTP POST: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-    logger.info("HTTP BODY:" + body)
-
     return _sendData(url, body, headers)
 
 def getGateway(includeDevices = True):
     headers = _buildHeaders()
     url = '/gateway/' + GatewayId + '?includeDevices=' + str(includeDevices)
 
-    logger.info("HTTP GET: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
     return _getData(url, "", headers)
 
 def finishclaim(name, uid):
@@ -333,6 +298,7 @@ def finishclaim(name, uid):
     body = '{"uid":"' + uid + '","name":"' + name + '" , "assets":[]}'
     headers = {"Content-type": "application/json"}
     url = "/gateway"
+    url = urllib.quote(url, '/?=')
 
     logger.info("HTTP POST: " + url)
     logger.info("HTTP HEADER: " + str(headers))
@@ -364,9 +330,6 @@ def getAssetState(assetId, deviceId):
     headers = _buildHeaders()
     url = "/device/" + deviceId + "/asset/" + str(assetId) + "/state"
 
-    logger.info("HTTP GET: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-
     return _getData(url, "", headers)
 
 def _buildPayLoadHTTP(value):
@@ -392,9 +355,6 @@ def authenticate():
     headers = _buildHeaders()
     url = "/gateway"
 
-    logger.info("HTTP GET: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-
     global _RegisteredGateway
     if _sendData(url, "", headers, 'GET'):
         _RegisteredGateway = True
@@ -415,6 +375,12 @@ def _sendData(url, body, headers, method = 'POST', status = 200):
         Some multi threading applications can have issues with the server closing the connection, if this happens
         we try again
     """
+    url = urllib.quote(url, '/?=')
+
+    logger.info("HTTP " + method + ": " + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY:" + str(body))                   # could be none
+
     success = False
     badStatusLineCount = 0  # keep track of the amount of 'badStatusLine' exceptions we received. If too many raise to caller, otherwise retry.
     while not success:
@@ -442,6 +408,12 @@ def _getData(url, body, headers, method = 'GET', status = 200):
     """send a request to the server and return the response"""
     success = False
     badStatusLineCount = 0  # keep track of the amount of 'badStatusLine' exceptions we received. If too many raise to caller, otherwise retry.
+    url = urllib.quote(url, '/?=')
+
+    logger.info("HTTP " + method + ': ' + url)
+    logger.info("HTTP HEADER: " + str(headers))
+    logger.info("HTTP BODY:" + body)
+
     while not success:
         try:
             _httpClient.request(method, url, body, headers)
@@ -589,9 +561,5 @@ def sendValueHTTP(value, deviceId, assetId):
     body = _buildPayLoadHTTP(value)
     headers = _buildHeaders()
     url = "/device/" + deviceId + "/asset/" + str(assetId) + "/state"
-
-    logger.info("HTTP PUT: " + url)
-    logger.info("HTTP HEADER: " + str(headers))
-    logger.info("HTTP BODY:" + body)
 
     return _sendData(url, body, headers, 'PUT')

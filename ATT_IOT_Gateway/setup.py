@@ -1,9 +1,9 @@
-from setuptools import *
+from distutils.core import setup
 
 setup(
     name='att_iot_gateway',
-    version='0.5.2',
-    packages=find_packages(exclude=['pip', 'setuptools']),      # pip and setup tools are loaded in the virtual environment for the IDE.
+    version='0.5.3',
+    packages=['att_iot_gateway'],      # pip and setup tools are loaded in the virtual environment for the IDE.
     install_requires='paho-mqtt',
     url='https://github.com/allthingstalk/rpi-python-gateway-client',
     license='MIT',
