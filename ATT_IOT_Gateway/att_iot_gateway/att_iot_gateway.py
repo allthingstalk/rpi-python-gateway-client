@@ -214,7 +214,10 @@ def addDevice(deviceId, name, description, activateActivity = False):
 
     if _RegisteredGateway == False:
         raise Exception('gateway must be registered')
-    body = '{"title":"' + name + '","description":"' + description + '", "type": "custom", "activityEnabled": ' + str(activateActivity).lower() + '}'
+    if name:
+        body = '{"title":"' + name + '","description":"' + description + '", "type": "custom", "activityEnabled": ' + str(activateActivity).lower() + '}'
+    else:
+        body = '{"description":"' + description + '", "type": "custom", "activityEnabled": ' + str(activateActivity).lower() + '}'
     headers = _buildHeaders()
     url = "/device/" + str(deviceId)                                    # make certain that the deviceId is a string.
 
