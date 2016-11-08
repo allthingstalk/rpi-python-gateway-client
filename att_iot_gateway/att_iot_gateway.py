@@ -1,4 +1,17 @@
 # -*- coding: utf-8 -*-
+
+#   Copyright 2014-2016 AllThingsTalk
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
 #for documentation about the mqtt lib, check https://pypi.python.org/pypi/paho-mqtt/0.9
 import paho.mqtt.client as mqtt                # provides publish-subscribe messaging support
 import calendar                                # for getting the epoch time
@@ -449,7 +462,7 @@ def _buildHeaders():
     return {"Content-type": "application/json", "Auth-GatewayKey": ClientKey, "Auth-GatewayId": GatewayId}
 
 
-def subscribe(mqttServer = "broker.AllThingsTalk.io", port = 1883, secure = False, certFile = 'cacert.pem'):
+def subscribe(mqttServer = "api.AllThingsTalk.io", port = 1883, secure = False, certFile = 'cacert.pem'):
     '''start the mqtt client and make certain that it can receive data from the IOT platform
 	   :param mqttServer:  the address of the mqtt server. Only supply this value if you want to a none standard server. Default = broker.AllThingsTalk.io
 	   :param port: the port number to communicate on with the mqtt server. Default = 1883

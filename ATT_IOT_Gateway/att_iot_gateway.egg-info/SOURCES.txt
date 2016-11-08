@@ -1,9 +1,0 @@
-setup.cfg
-setup.py
-att_iot_gateway/__init__.py
-att_iot_gateway/att_iot_gateway.py
-att_iot_gateway.egg-info/PKG-INFO
-att_iot_gateway.egg-info/SOURCES.txt
-att_iot_gateway.egg-info/dependency_links.txt
-att_iot_gateway.egg-info/requires.txt
-att_iot_gateway.egg-info/top_level.txt

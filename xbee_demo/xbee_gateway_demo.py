@@ -1,5 +1,17 @@
 #!/usr/bin/python
 
+#   Copyright 2014-2016 AllThingsTalk
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
 # not yet supported
 
 import serial
@@ -7,7 +19,7 @@ from time import sleep                             #pause the app
 from ConfigParser import *
 from uuid import getnode as get_mac
 from xbee import ZigBee
-import att_iot_gateway as IOT                              #provide cloud support
+import att_iot_gateway.att_iot_gateway as IOT                              #provide cloud support
 
 def connect():
     'set up the connection with the cloud + register the gateway'

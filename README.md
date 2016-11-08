@@ -7,15 +7,11 @@ Check the [api docs](https://github.com/allthingstalk/rpi-python-gateway-client/
 
 
 ### Installation
-_with pip_
 - install dependencies:
 	sudo pip install paho-mqtt
 - install lib
 	sudo pip install att_iot_gateway
 
-_manually_
-- Run `git clone https://github.com/allthingstalk/rpi-python-gateway-client`
-- Run `sudo bash rpi-python-gateway-client/setupNoShield.sh`
 
 ### Instructions
 
