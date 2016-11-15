@@ -290,7 +290,6 @@ When the gateway has ben succesfully created, use 'authenticate' to verify that 
     :param name: the name ofhte gateway.
     :param uid: a globally unique id for gateways (ex: mac address)
     :param assets: a json structure with all the assets that should be created for the gateway. Default is None
-    See the [api documentation](http://docs-dev.AllThingsTalk.io/reference/devices/#-create-or-update-asset-) for more info.
     :return: True when succesfull.
     """
 
