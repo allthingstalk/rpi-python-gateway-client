@@ -1,4 +1,17 @@
 # -*- coding: utf-8 -*-
+
+#   Copyright 2014-2016 AllThingsTalk
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
 #for documentation about the mqtt lib, check https://pypi.python.org/pypi/paho-mqtt/0.9
 import paho.mqtt.client as mqtt                # provides publish-subscribe messaging support
 import calendar                                # for getting the epoch time
@@ -88,7 +101,7 @@ on_connected = None
 'the application untill a connection with the broker has been made, so that no data gets lost'
 
 
-def connect(httpServer="api.smartliving.io", secure=False, certFile = None):
+def connect(httpServer="api.AllThingsTalk.io", secure=False, certFile = None):
     """Create a connection with the http server
     :param httpServer: The dns name of the server to use for HTTP communication
     :type httpServer: basestring
@@ -277,7 +290,6 @@ When the gateway has ben succesfully created, use 'authenticate' to verify that 
     :param name: the name ofhte gateway.
     :param uid: a globally unique id for gateways (ex: mac address)
     :param assets: a json structure with all the assets that should be created for the gateway. Default is None
-    See the [api documentation](http://docs-dev.smartliving.io/reference/devices/#-create-or-update-asset-) for more info.
     :return: True when succesfull.
     """
 
@@ -449,11 +461,11 @@ def _buildHeaders():
     return {"Content-type": "application/json", "Auth-GatewayKey": ClientKey, "Auth-GatewayId": GatewayId}
 
 
-def subscribe(mqttServer = "broker.smartliving.io", port = 1883, secure = False, certFile = 'cacert.pem'):
+def subscribe(mqttServer = "api.AllThingsTalk.io", port = 1883, secure = False, certFile = 'cacert.pem'):
     '''start the mqtt client and make certain that it can receive data from the IOT platform
-	   :param mqttServer:  the address of the mqtt server. Only supply this value if you want to a none standard server. Default = broker.smartliving.io
+	   :param mqttServer:  the address of the mqtt server. Only supply this value if you want to a none standard server. Default = broker.AllThingsTalk.io
 	   :param port: the port number to communicate on with the mqtt server. Default = 1883
-	   :param secure: When true, an SSL connection is used. Default = False.  When True, use port 8883 on broker.smartliving.io
+	   :param secure: When true, an SSL connection is used. Default = False.  When True, use port 8883 on broker.AllThingsTalk.io
 	   :param certFile: certfile is a string pointing to the PEM encoded client
         certificate and private keys respectively. Note
         that if either of these files in encrypted and needs a password to

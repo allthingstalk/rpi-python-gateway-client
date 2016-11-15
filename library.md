@@ -1,168 +1,287 @@
-## globals
-1. on_message: the callback function that will be called whenever data is sent from the IOT platform to one of the assets on your device.
+# att_iot_gateway Module
 
-Optional:
+
+## Data
 The following global variables are also needed for the system, but can be supplied by the platform.  You don't have to supply them manually. See the xbee example for more info.
-2. CientId: the account id. This identifies you as the owner of the device.
-3. ClientKey: the key that accompanies your account. It is used as a security token for http calls.
-4. GatewayId: the id of the gateway.
+- `ClientId = None` : the account id. This identifies you as the owner of the device.
 
+- `ClientKey = None` : the key that accompanies your account. It is used as a security token for http calls.
+- `on_connected = None` : optional callback function that is called when the mqtt connection is established.
+- `on_message = None` : the callback function that will be called whenever data is sent from the IOT platform to one of the assets on your device.
 
-## functions
-```python
-def connect(httpServer="beta.smartliving.io")
-```
+## Functions
 
-connect with the http server. This should be the firs call you do before creating any assets.
+### addAsset 
+
+```Python
+addAsset(id, deviceId, name, description, type, profile, style='Undefined')
+``` 
+
+add an asset to the device. Use the specified name and description.
 
 _parameters:_
 
-1. httpServer: (string) optional, the name of the http server to connect to.
+- `id:` <type>string</type> The local id of the asset (it's name)
+<type>type id:</type> basestring
+- `deviceId:` The local id of the device that owns the asset (the name of the device)
+- `name:` A label for the asset.
+- `description:` A desccription.
+- `type:` type of asset: sensor, actuator, config, virtual
+- `profile:` The data type of the asset: integer, string, number, boolean, json schema definition
+- `style:` An optional label that you can attach to the asset, which indicates it's function. Currently supported values are:
+  1. Undefined: the asset has no specific style (default)
+  1. Primary: the asset is considered to represent the primary function of the device.
+  1. Config: the asset is used to configure the device.
+  1. Battery: the asset represents a battery value
+  1. Secondary: the asset represents secondary functionality of the device
+<type>type style:</type> string
 
-```python
-def createGateway(name, uid, assets = None)
-```
 
-Create a new orphan gateway in the cloud. After the gateway has been created, the user should claim it from within the website so that the gateway is assigned to the correct user account.  To finish the claim procedure, the gateway application should call 'finishclaim' after creating the gateway in the cloud.  
+_returns_: True when succesful (200 ok was returned), otherwise False
+Can raise exceptions when there were network issues. 
+
+### addDevice 
+
+```Python
+addDevice(deviceId, name, description, activateActivity=False)
+``` 
+
+creates a new device in the IOT platform.
+if the device already exists, the function will fail
+		return type : None
+
+_parameters:_
+
+- `deviceId:` The local identifier of the device
+- `name:` the name of the device
+- `description:` a description
+- `activateActivity:` When true, historical data will be recorded for this device.
+<type>type activateActivity:</type> bool
+
+
+_returns_ True if the operation was succesful, otherwise False 
+
+### addDeviceFromTemplate 
+
+```Python
+addDeviceFromTemplate(deviceId, templateId, values)
+``` 
+
+add a device to the cloud by using a predefined template that is stored in the cloud
+<type>type deviceId:</type> string or int
+
+_parameters:_
+
+- deviceId:
+- `templateId:` the id of the template that should be used
+<type>type templateId:</type> basestring
+- `values:` any optional values that have to be replaced in the template. This is specified as a
+dictionary with key-value pairs.
+<type>type values:</type> dictionary (json object)
+
+
+_returns_: the definition of the device that was created (json/dictionary) or None if the template was not found 
+
+### addGatewayAsset 
+
+```Python
+addGatewayAsset(id, name, description, isActuator, assetType, style='Undefined')
+``` 
+
+add an asset to the gateway 
+
+### authenticate 
+
+```Python
+authenticate()
+``` 
+
+validate that the currently stored credentials are ok.
+
+
+_returns_ True if succesful, otherwise False 
+
+### connect 
+
+```Python
+connect(httpServer='api.AllThingsTalk.io', secure=False, certFile=None)
+``` 
+
+Create a connection with the http server
+
+_parameters:_
+
+- `httpServer:` The dns name of the server to use for HTTP communication
+<type>type httpServer:</type> basestring
+- `secure:` When true, an SSL connection will be used, if available. 
+
+### createGateway 
+
+```Python
+createGateway(name, uid, assets=None)
+``` 
+
+Create a new orphan gateway in the cloud. After the gateway has been created, the user should claim it from within the website so that the gateway is assigned to the correct user account.  To finish the claim procedure, the gateway application should call 'finishclaim' after creating the gateway in the cloud.
 When the gateway has ben succesfully created, use 'authenticate' to verify that the gateway still exists in the cloud whenever the gateway restarts.
 
 _parameters:_
 
-1. name: (string) The name of the gateway.
-2. uid: (string) a unique identifier for the gateway. This will become the code that the user must enter in order to 'claim' the gateway.  This value has to be unique within the system, otherwise the gateway will not be created.  Most often, the mac address of the gateway is used for this value.
-3. assets: (optional, array): an optional array of assets that should be created for the gateway. The contents of this array should be asset objects. See the [api documentation](http://docs-dev.smartliving.io/reference/devices/#-create-or-update-asset-) for more info.
+- `name:` the name ofhte gateway.
+- `uid:` a globally unique id for gateways (ex: mac address)
+- `assets:` a json structure with all the assets that should be created for the gateway. Default is None
+See the [api documentation](http://docs-dev.AllThingsTalk.io/reference/devices/#-create-or-update-asset-) for more info.
 
-```python
-def getGateway(includeDevices = True)
-```
 
-Gets the details of the gateway that the library is currently serving for. In other words, the details will be returned of the gateway with the id specified in the global 'GatewayId'.
+_returns_: True when succesfull. 
 
-_parameters:_
+### deleteAsset 
 
-1. includeDevices: (bool) optional, when true, alll the assets will also be included in the result. Otherwise, no asset details will be included.
+```Python
+deleteAsset(device, id)
+``` 
 
-```python
-def finishclaim(name, uid)
-```
-
-Finishes the claiming procedure.
+Delete the asset on the cloud with the specified name on the specified device.
 
 _parameters:_
 
-1. name: (string) The name of the gateway.
-2. uid: (string) The same unique identifier that was used for creating the gateway.
-
-```python
-def authenticate()
-```
-
-When the gateway has ben succesfully created, use 'authenticate' to verify that the gateway still exists in the cloud whenever the gateway restarts.  
-Without authentication, the gateway will not be able to communicate with the cloud.
+- `device:` the local name of the device.
+- `id:` the local name of the asset
 
 
-```python
-def addDevice(deviceId, name, description)
-```
+_returns_: True when the operation was successful (returned 204), otherwise False 
 
-Creates a new device in the IOT platform. The deviceId is local to the gateway and should be unique within this context. Often, the mac address of the device is used. This function will fail if the device already exists. Use 'DeviceExists' to check if the device needs to be created or not.
+### deleteDevice 
+
+```Python
+deleteDevice(deviceId)
+``` 
+
+Deletes the specified device from the cloud.
 
 _parameters:_
 
-1. deviceId: (string) the id of the device that should be created. This has to be a unique value within the context of the gateway. 
-2. name: (string) the name that the device should have. This is a free form string.
-3. description: (string) a possible description of the device.
-
-returns _True_ if the operation was successful, otherwise it returns _False_.
-
-```python
-def deviceExists(deviceId)
-```
-
-Checks if the device already exists in the IOT platform. If it doesn't exist, you can create it with the function 'addDevice'.
-
-_parameters:_
-
-1. deviceId: (string) the id of the device that should be created. This should be a unique value within the IOT platform.
-
-returns _True_ if the device already exists, otherwise _False_.
+- `deviceId:` the local name of the device.
 
 
-```python
-def deleteDevice(deviceId)
-```
+_returns_ true when successful. 
 
-Deletes the spedified device from the cloudapp. 
+### deleteGatewayAsset 
+
+```Python
+deleteGatewayAsset(id)
+``` 
+
+Delete the asset on the cloud with the specified name on the specified device.
 
 _parameters:_
 
-1. deviceId: (string) the id of the device that should be deleted. 
-
-returns _True_ if the device was deleted, otherwise _False_.
-
-```python
-def addAsset(id, deviceId, name, description, type, profile, style = "Undefined")
-```
-
-create or update the specified asset. 
-
-_parameters:_
-
-1. id: (string) the local id of the asset. For instance '1', or '2'. Each asset should have a unique id within your script.
-2. deviceId: (string) the id of the device that should be created. This should be a unique value within the context of the gateway. 
-3. name: (string) the name that the asset should have. This is a free form string.
-4. description: (string) a possible description of the asset.
-5. type: (string) Possible values: sensor, actuator, virtual, config.
-6. profile: (string or dict) The data type that the asset works with. See here for more info: [profile](http://docs-dev.smartliving.io/about/profiles/).
-7. style: (string) An optional label that you can attach to the asset, which indicates it's function. Currently supported values are:
-	1. Undefined: the asset has no specific style (default)
-	2. Primary: the asset is considered to represent the primary function of the device.
-	3. Config: the asset is used to configure the device.
-	4. Battery: the asset represents a battery value
-	5. Secondary: the asset represents secondary functionality of the device
+- `device:` the local name of the device.
+- `id:` the local name of the asset
 
 
-```python
-def subscribe(mqttServer = "broker.smartliving.io", port = 1883)
-```
+_returns_: True when the operation was successful (returned 204), otherwise False 
 
-Sets up everything for the pub-sub client: create the connection, provide the credentials and register for any possible incoming data.
+### deviceExists 
+
+```Python
+deviceExists(deviceId)
+``` 
+
+checks if the device already exists in the IOT platform.
 
 _parameters:_
 
-1. mqttServer : (string) Optional, the name of the server to connect to.
-2. port: (int) Optional, the port number of the server to connect to.
+- `deviceId:` the local name of the device.
 
-```python
-def send(value, deviceId, assetId)
-```
 
-send a data value to the cloud server for the device and asset with the specified id, over MQTT.
+_returns_ True when it already exists, otherwise False 
+
+### finishclaim 
+
+```Python
+finishclaim(name, uid)
+``` 
+
+finish the claiming process for a previously created gateway.  When done, the system will store the credentials
+return true if succesful, otherwise false 
+
+### getAssetState 
+
+```Python
+getAssetState(assetId, deviceId)
+``` 
+
+look up the current state value for the asset with the specified local id, on the specified device (local id)
+
+
+_returns_ json object. If not found, returns None 
+
+### getGateway 
+
+```Python
+getGateway(includeDevices=True)
+``` 
+
+
+
+### send 
+
+```Python
+send(value, deviceId, assetId)
+``` 
+
+send the data to the cloud. Data can be a single value or object
 
 _parameters:_
 
-1. value: (string or object) the value to send in the form of a string. So a boolean is sent as 'true' or 'false', an integer can be sent as '1' and a fload as '1.1'.  
-You can also send an object or a python list with this function to the cloud. Objects will be converted to json objects, lists become json arrays. The fields/records in the json objects or arrays must be the same as defined in the profile.
-2. deviceId: (string) the id of the device that contains the asset you want to send a value for. 
-3. assetId: (string) the id of the asset to send the value to. This is the local id that you used while creating/updating the asset through the function 'AddAsset' Ex: '1'.
+- `value:` the value to send in the form of a string. So a boolean is sent as 'true' or 'false', an integer can be sent as '1' and a fload as '  1.1'.  You can also send an object or a python list with this function to the cloud. Objects will be converted to json objects, lists become json arrays. The fields/records in the json objects or arrays must be the same as defined in the profile.
+<type>type value:</type> string or json object
+- `deviceId:` The local name of the device
+- `assetId:` the local name of the asset 
 
-```python
+### sendCommand 
+
+```Python
+sendCommand(value, gatewayId, deviceId, assetId)
+``` 
+
+send the data to the cloud. Data can be a single value or object
+
+_parameters:_
+
+- `value:` the value to send in the form of a string. So a boolean is sent as 'true' or 'false', an integer can be sent as '1' and a fload as '  1.1'.  You can also send an object or a python list with this function to the cloud. Objects will be converted to json objects, lists become json arrays. The fields/records in the json objects or arrays must be the same as defined in the profile.
+<type>type value:</type> string or json object
+- `deviceId:` The local name of the device
+- `assetId:` the local name of the asset 
+
+### sendValueHTTP 
+
+```Python
 sendValueHTTP(value, deviceId, assetId)
-```
+``` 
 
-Sends a data value to the cloud server, using HTTP, for the asset with the specified id
+Sends a new value for an asset over http. This function is similar to send, accept that the latter uses mqtt
+while this function uses HTTP
 
-<i>parameters:</i>
+Parameters are the same as for the send function. 
 
-Parameters are the same as for the 'send' function.
+### subscribe 
 
-```python
-def getAssetState(assetId, deviceId)
-```
+```Python
+subscribe(mqttServer='broker.AllThingsTalk.io', port=1883, secure=False, certFile='cacert.pem')
+``` 
 
-Returns the last recorded value for the specified asset.  If no data has been recorded yet for the asset, the function will return 'None'.
+start the mqtt client and make certain that it can receive data from the IOT platform
 
 _parameters:_
 
-1. assetId: (string) the id of the asset to get the value for. This is the local id that you used while creating/updating the asset through the function 'AddAsset' Ex: '1'.
-2. deviceId: (string) the id of the device that contains the asset you want to get a value for. 
+- `mqttServer:`  the address of the mqtt server. Only supply this value if you want to a none standard server. Default = broker.AllThingsTalk.io
+- `port:` the port number to communicate on with the mqtt server. Default = 1883
+- `secure:` When true, an SSL connection is used. Default = False.  When True, use port 8883 on broker.AllThingsTalk.io
+- `certFile:` certfile is a string pointing to the PEM encoded client
+certificate and private keys respectively. Note
+that if either of these files in encrypted and needs a password to
+decrypt it, Python will ask for the password at the command line. It is
+not currently possible to define a callback to provide the password.
+Note: SSL will can only be used when the mqtt lib has been compiled with support for ssl 
+
