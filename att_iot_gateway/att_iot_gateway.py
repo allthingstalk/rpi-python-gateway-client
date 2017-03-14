@@ -298,7 +298,7 @@ When the gateway has ben succesfully created, use 'authenticate' to verify that 
     else:
         body = '{"uid":"' + uid + '","name":"' + name + '", "assets":' + json.dumps(assets) + ' }'
     headers = {"Content-type": "application/json"}
-    url = "/gateway"
+    url = "/gateways"
     return _sendData(url, body, headers)
 
 def getGateway(includeDevices = True):

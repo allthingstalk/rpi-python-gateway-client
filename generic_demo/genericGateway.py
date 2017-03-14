@@ -40,7 +40,7 @@ def authenticate(maxClaim = 30):
        maxClaim: int = nr of times that system should try to finish the claim (waits for 1second between tries) before timing out if the user has to claim the gateway in the cloud
     '''
     if _tryLoadConfig() == False:
-        uid = _getUid();
+        uid = _getUid()
         IOT.createGateway("generic gateway", uid)
         while True:                                     # we try to finish the claim process until success or app quits, cause the app can't continue without a valid and claimed gateway
             if IOT.finishclaim("generic gateway", uid):
