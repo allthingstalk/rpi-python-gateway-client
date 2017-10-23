@@ -4,7 +4,7 @@ raspberry-python-gateway-client library is deprecated, and will not receive any 
 
 ---
 
-raspberrypi-python-client
+raspberrypi-python-gateway-client
 ==========
 
 A library that provide access to the ATT IOT platform, for the Python language (geared for gateway development).
